@@ -5,8 +5,9 @@ import './Owned.sol';
 
 contract Recovery is Owned {
 
-    function recoverUser(User userContract, address newAddress) onlyContractOwner(){
+    function recoverUser(User userContract, address newAddress) onlyContractOwner() returns(bool) {
         userContract.recoverUser(newAddress);
+        return true;
     }
 
 }
