@@ -32,15 +32,8 @@ contract User is Owned {
         return true;
     }
 
-    //If current contract is the new one that recovers other user contract
-    function recoverPreviousUserContract() onlyRecoveryContract() returns(bool) {
-        claimContractOwnership();
-        return true;
-    }
-
-    //If current contract is the one that should be recovered
-    function passRigtstoNewUserContract(User newAddress) onlyRecoveryContract() returns(bool) {
-        userProxy.changeContractOwnership(newAddress);
+    function recoverUser(address newAddress) onlyRecoveryContract() returns(bool) {
+        contractOwner = newAddress;
         return true;
     }
         
