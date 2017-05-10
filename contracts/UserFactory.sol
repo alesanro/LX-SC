@@ -14,11 +14,12 @@ contract UserLibraryInterface {
 contract UserFactory is EventsHistoryAdapter, Owned {
     UserLibraryInterface userLibrary;
 
-    event UserCreated(address indexed user, address proxy, bytes32[] roles, uint areas, uint[] categories, uint[] skills);
+    event UserCreated(address indexed user, address proxy, address recoveryContract, bytes32[] roles, uint areas, uint[] categories, uint[] skills);
 
-    function createUserWithProxyAndRecovery(bytes32[] _roles, uint _areas, uint[] _categories, uint[] _skills) {
+    function createUserWithProxyAndRecovery(address _recoveryContract, bytes32[] _roles, uint _areas, uint[] _categories, uint[] _skills) {
         UserProxy proxy = new UserProxy();
         User user = new User();
+        user.setRecoveryContract(_recoveryContract);
         proxy.changeContractOwnership(user);
         user.claimContractOwnership();
         user.setUserProxy(proxy);
@@ -28,7 +29,7 @@ contract UserFactory is EventsHistoryAdapter, Owned {
         if(!_setSkills(user, _areas, _categories, _skills)) {
             throw;
         }
-        UserCreated(user, proxy, _roles, _areas, _categories, _skills);
+        UserCreated(user, proxy, _recoveryContract, _roles, _areas, _categories, _skills);
     }
 
     function setupEventsHistory(address _eventsHistory) onlyContractOwner() returns(bool) {

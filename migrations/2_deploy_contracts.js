@@ -16,6 +16,7 @@ const UserLibrary = artifacts.require('./UserLibrary.sol');
 const IPFSLibrary = artifacts.require('./IPFSLibrary.sol');
 const UserProxy = artifacts.require('./UserProxy.sol');
 const FakeCoin = artifacts.require('./FakeCoin.sol');
+const Recovery = artifacts.require('./Recovery.sol');
 const Storage = artifacts.require('./Storage.sol');
 const User = artifacts.require('./User.sol');
 const Mock = artifacts.require('./Mock.sol');
@@ -26,6 +27,7 @@ module.exports = deployer => {
   .then(() => deployer.deploy(UserLibraryMock))
   .then(() => deployer.deploy(StorageManager))
   .then(() => deployer.deploy(BalanceHolder))
+  .then(() => deployer.deploy(Recovery))
   .then(() => deployer.deploy(Storage))
   .then(() => deployer.deploy(StorageInterface))
   .then(() => deployer.link(StorageInterface, [StorageTester, UserLibrary]))
