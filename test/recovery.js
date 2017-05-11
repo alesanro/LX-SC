@@ -28,6 +28,7 @@ contract('Recovery', function(accounts) {
       assert.equal(result.logs[0].args.prevUser, prevUser);
       assert.equal(result.logs[0].args.newUser, newUser);
       assert.equal(result.logs[0].args.userContract, userMock.address);
+      assert.notEqual(result.logs[0].args.newUser, result.logs[0].args.prevUser);
     })
     .then(() => userMock.recoverUserCalls())
     .then(result => assert.equal(result.toString(), '1'));

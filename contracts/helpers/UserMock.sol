@@ -5,6 +5,7 @@ contract UserMock {
 	uint public recoverUserCalls;
 
     function recoverUser(address _newAddress) returns(bool) {
+    	contractOwner = _newAddress;
     	recoverUserCalls++;
     	return true;
     }

@@ -20,7 +20,7 @@ const Recovery = artifacts.require('./Recovery.sol');
 const UserMock = artifacts.require('./UserMock.sol');
 const Storage = artifacts.require('./Storage.sol');
 const User = artifacts.require('./User.sol');
-const Mock = artifacts.require('./Mock.sol'); 
+const Mock = artifacts.require('./Mock.sol');
 
 module.exports = deployer => {
   deployer.deploy(ManagerMock)

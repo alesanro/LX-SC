@@ -8,10 +8,11 @@ contract Recovery is Owned {
     event UserRecovered(address prevUser, address newUser, User userContract);
 
     function recoverUser(User _userContract, address _newAddress) onlyContractOwner() returns(bool) {
+        address prev = _userContract.contractOwner();
         if (!_userContract.recoverUser(_newAddress)){
             throw;
         }
-        UserRecovered(_userContract.contractOwner(), _newAddress, _userContract);
+        UserRecovered(prev, _newAddress, _userContract);
         return true;
     }
 
