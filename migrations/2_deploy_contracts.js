@@ -17,13 +17,16 @@ const IPFSLibrary = artifacts.require('./IPFSLibrary.sol');
 const UserProxy = artifacts.require('./UserProxy.sol');
 const FakeCoin = artifacts.require('./FakeCoin.sol');
 const Recovery = artifacts.require('./Recovery.sol');
+const UserMock = artifacts.require('./UserMock.sol');
 const Storage = artifacts.require('./Storage.sol');
 const User = artifacts.require('./User.sol');
-const Mock = artifacts.require('./Mock.sol');
+const Mock = artifacts.require('./Mock.sol'); 
 
 module.exports = deployer => {
   deployer.deploy(ManagerMock)
   .then(() => deployer.deploy(Mock))
+  .then(() => deployer.deploy(User))
+  .then(() => deployer.deploy(UserMock))
   .then(() => deployer.deploy(UserLibraryMock))
   .then(() => deployer.deploy(StorageManager))
   .then(() => deployer.deploy(BalanceHolder))
@@ -34,7 +37,6 @@ module.exports = deployer => {
   .then(() => deployer.deploy(StorageTester, Storage.address, 'StorageTester'))
   .then(() => deployer.deploy(FakeCoin))
   .then(() => deployer.deploy(EventsHistory))
-  .then(() => deployer.deploy(User))
   .then(() => deployer.deploy(UserProxy))
   .then(() => deployer.deploy(UserProxyTester))
   .then(() => deployer.deploy(UserFactory))
