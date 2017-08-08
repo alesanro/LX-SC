@@ -2,7 +2,7 @@ pragma solidity 0.4.8;
 
 import './User.sol';
 import './UserProxy.sol';
-import './base/Owned.sol';
+import 'solidity-shared-lib/contracts/Owned.sol';
 
 contract User is Owned {
     UserProxy userProxy;

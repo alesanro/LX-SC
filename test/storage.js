@@ -1,7 +1,7 @@
 "use strict";
 
 const ManagerMock = artifacts.require('./ManagerMock.sol');
-const Storage = artifacts.require('./Storage.sol');
+const Storage = artifacts.require('solidity-storage-lib/contracts/Storage.sol');
 
 const Asserts = require('./helpers/asserts');
 const Reverter = require('./helpers/reverter');

@@ -26,6 +26,8 @@
   "dependencies": {
     "bluebird": "^3.5.0",
     "ethereumjs-testrpc": "^3.0.3",
-    "truffle": "3.2.1"
+    "truffle": "3.2.1",
+    "solidity-storage-lib": "alesanro/solidity-storage-lib#feature\/MINT-246-upd2",
+    "solidity-eventshistory-lib": "alesanro/solidity-eventshistory-lib#feature\/MINT-247-upd"
   }
 }

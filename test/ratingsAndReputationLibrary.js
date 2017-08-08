@@ -8,7 +8,7 @@ const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
 const RatingsAndReputationLibrary = artifacts.require('./RatingsAndReputationLibrary.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
-const Storage = artifacts.require('./Storage.sol');
+const Storage = artifacts.require('solidity-storage-lib/contracts/Storage.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
 const UserFactory = artifacts.require('./UserFactory.sol');
 

@@ -1,8 +1,8 @@
 pragma solidity 0.4.8;
 
 import './adapters/MultiEventsHistoryAdapter.sol';
-import './adapters/StorageAdapter.sol';
-import './base/Owned.sol';
+import 'solidity-storage-lib/contracts/StorageAdapter.sol';
+import 'solidity-shared-lib/contracts/Owned.sol';
 
 
 contract Roles2Library is StorageAdapter, MultiEventsHistoryAdapter, Owned {

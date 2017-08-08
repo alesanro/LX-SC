@@ -1,6 +1,6 @@
 pragma solidity 0.4.8;
 
-import '../adapters/StorageAdapter.sol';
+import 'solidity-storage-lib/contracts/StorageAdapter.sol';
 
 contract StorageTester is StorageAdapter {
     StorageInterface.UInt uintVar;

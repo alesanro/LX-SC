@@ -2,7 +2,7 @@ pragma solidity 0.4.8;
 
 import './adapters/MultiEventsHistoryAdapter.sol';
 import './adapters/Roles2LibraryAndERC20LibraryAdapter.sol';
-import './adapters/StorageAdapter.sol';
+import 'solidity-storage-lib/contracts/StorageAdapter.sol';
 
 
 contract ERC20BalanceInterface {

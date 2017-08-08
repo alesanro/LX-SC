@@ -1,12 +1,3 @@
-<<<<<<< HEAD
-const RatingsAndReputationLibrary = artifacts.require('./RatingsAndReputationLibrary.sol');
-const StorageInterface = artifacts.require('./StorageInterface.sol');
-const UserLibraryMock = artifacts.require('./UserLibraryMock.sol');
-const UserProxyTester = artifacts.require('./UserProxyTester.sol');
-const StorageManager = artifacts.require('./StorageManager.sol');
-const PaymentGateway = artifacts.require('./PaymentGateway.sol');
-const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
-=======
 "use strict";
 
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
@@ -22,10 +13,9 @@ const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
 const RatingsAndReputationLibrary = artifacts.require('./RatingsAndReputationLibrary.sol');
 const Recovery = artifacts.require('./Recovery.sol');
 const Roles2Library = artifacts.require('./Roles2Library.sol');
->>>>>>> roles2
 const SkillsLibrary = artifacts.require('./SkillsLibrary.sol');
-const Storage = artifacts.require('./Storage.sol');
-const StorageInterface = artifacts.require('./StorageInterface.sol');
+const Storage = artifacts.require('solidity-storage-lib/contracts/Storage.sol');
+const StorageInterface = artifacts.require('solidity-storage-lib/contracts/StorageInterface.sol');
 const StorageManager = artifacts.require('./StorageManager.sol');
 const StorageTester = artifacts.require('./StorageTester.sol');
 const User = artifacts.require('./User.sol');
@@ -56,17 +46,6 @@ module.exports = deployer => {
   .then(() => deployer.deploy(MultiEventsHistory, Mock.address))
   .then(() => deployer.deploy(UserProxy))
   .then(() => deployer.deploy(UserProxyTester))
-<<<<<<< HEAD
-  .then(() => deployer.deploy(UserFactory))
-  .then(() => deployer.deploy(RatingsAndReputationLibrary, Storage.address, 'RatingsAndReputationLibrary'))
-  .then(() => deployer.deploy(IPFSLibrary, Storage.address, 'IPFSLibrary'))
-  .then(() => deployer.deploy(SkillsLibrary, Storage.address, 'SkillsLibrary'))
-  .then(() => deployer.deploy(RolesLibrary, Storage.address, 'RolesLibrary'))
-  .then(() => deployer.deploy(UserLibrary, Storage.address, 'UserLibrary'))
-  .then(() => deployer.deploy(ERC20Library, Storage.address, 'ERC20Library'))
-  .then(() => deployer.deploy(PaymentGateway, Storage.address, 'PaymentGateway'))
-  .then(() => deployer.deploy(PaymentProcessor))
-=======
   .then(() => deployer.deploy(UserFactory, Mock.address))
   .then(() => deployer.deploy(RatingsAndReputationLibrary, Storage.address, 'RatingsAndReputationLibrary', Mock.address))
   .then(() => deployer.deploy(IPFSLibrary, Storage.address, 'IPFSLibrary', Mock.address))
@@ -77,6 +56,5 @@ module.exports = deployer => {
   .then(() => deployer.deploy(PaymentGateway, Storage.address, 'PaymentGateway', Mock.address, ERC20Library.address))
   .then(() => deployer.deploy(PaymentProcessor, Mock.address))
   .then(() => deployer.deploy(JobController, Storage.address, 'JobController', Mock.address, ERC20Library.address))
->>>>>>> roles2
   .then(() => true);
 };

@@ -3,7 +3,7 @@
 const ManagerMock = artifacts.require('./ManagerMock.sol');
 const Mock = artifacts.require('./Mock.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
-const Storage = artifacts.require('./Storage.sol');
+const Storage = artifacts.require('solidity-storage-lib/contracts/Storage.sol');
 const StorageTester = artifacts.require('./StorageTester.sol');
 
 const Asserts = require('./helpers/asserts');

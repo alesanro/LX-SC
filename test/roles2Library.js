@@ -1,6 +1,6 @@
 const Reverter = require('./helpers/reverter');
 const Asserts = require('./helpers/asserts');
-const Storage = artifacts.require('./Storage.sol');
+const Storage = artifacts.require('solidity-storage-lib/contracts/Storage.sol');
 const ManagerMock = artifacts.require('./ManagerMock.sol');
 const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');

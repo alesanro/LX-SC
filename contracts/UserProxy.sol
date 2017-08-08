@@ -1,6 +1,6 @@
 pragma solidity 0.4.8;
 
-import './base/Owned.sol';
+import 'solidity-shared-lib/contracts/Owned.sol';
 
 
 contract UserProxy is Owned {

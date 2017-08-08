@@ -1,7 +1,7 @@
 pragma solidity 0.4.8;
 
 import './adapters/MultiEventsHistoryAdapter.sol';
-import './base/Owned.sol';
+import 'solidity-shared-lib/contracts/Owned.sol';
 
 
 contract StorageManager is MultiEventsHistoryAdapter, Owned {
