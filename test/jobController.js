@@ -1000,8 +1000,6 @@ contract('JobController', function(accounts) {
           const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
-          const now = new Date() / 1000;
-          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
         })
         // Pause work
         .then(() => jobController.pauseWork(1, {from: worker}))
@@ -1013,8 +1011,6 @@ contract('JobController', function(accounts) {
           const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
-          const now = new Date() / 1000;
-          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
         })
         // Resume work
         .then(() => jobController.resumeWork(1, {from: worker}))
@@ -1026,8 +1022,6 @@ contract('JobController', function(accounts) {
           const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
-          const now = new Date() / 1000;
-          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
         })
         // Add more time
         .then(() => jobController.addMoreTime(1, 60, {from: client}))
@@ -1055,8 +1049,6 @@ contract('JobController', function(accounts) {
           const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
-          const now = new Date() / 1000;
-          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
         })
         .then(() => jobController.releasePayment(1))
         .then(tx => eventsHelper.extractEvents(tx, "PaymentReleased"))
@@ -1141,8 +1133,6 @@ contract('JobController', function(accounts) {
           const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
-          const now = new Date() / 1000;
-          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
         })
         // Pause work
         .then(() => jobController.pauseWork(1, {from: worker}))
@@ -1154,8 +1144,6 @@ contract('JobController', function(accounts) {
           const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
-          const now = new Date() / 1000;
-          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
         })
         // Resume work
         .then(() => jobController.resumeWork(1, {from: worker}))
@@ -1167,8 +1155,6 @@ contract('JobController', function(accounts) {
           const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), '1');
-          const now = new Date() / 1000;
-          assert.isTrue(now >= log.at.toNumber() && log.at.toNumber() >= now - 2)
         })
         // Add more time
         .then(() => jobController.addMoreTime(1, 60, {from: client}))

@@ -1,19 +1,21 @@
 pragma solidity ^0.4.11;
 
-contract UserLibraryMock {
-    uint addRoleCalls = 0;
-    uint setManyCalls = 0; 
 
-    function getCalls() constant returns(uint, uint){
+contract UserLibraryMock {
+
+    uint addRoleCalls = 0;
+    uint setManyCalls = 0;
+
+    function getCalls() public view returns (uint, uint){
         return (addRoleCalls, setManyCalls);
     }
 
-    function addRole(address _user, bytes32 _role) constant returns(bool) {
+    function addRole(address, bytes32) public returns (bool) {
         addRoleCalls++;
         return true;
     }
 
-    function setMany(address _user, uint _areas, uint[] _categories, uint[] _skills) returns(bool) {
+    function setMany(address, uint, uint[], uint[]) public returns (bool) {
         setManyCalls++;
         return true;
     }

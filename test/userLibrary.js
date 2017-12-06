@@ -93,7 +93,7 @@ contract('UserLibrary', function(accounts) {
       let actualSkills;
       let expSkills;
       return () =>
-        userLibrary.getUserSkills(user)
+        userLibrary.getUserSkills.call(user)
         .then(([areas, categories, skills]) => {
           actualSkills = [areas.toString(), parseBigNumbers(categories), parseBigNumbers(skills)];
           expSkills = [expectedSkills[0].toString(), parseBigNumbers(expectedSkills[1]), parseBigNumbers(expectedSkills[2])];
