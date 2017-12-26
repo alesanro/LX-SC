@@ -26,6 +26,7 @@
   "dependencies": {
     "bluebird": "^3.5.0",
     "ethereumjs-testrpc": "^6.0.3",
-    "truffle": "4.0.1"
+    "truffle": "4.0.1",
+    "abi-decoder": "^1.0.9"
   }
 }
