@@ -29,8 +29,9 @@
   "dependencies": {
     "abi-decoder": "^1.0.9",
     "solidity-shared-lib": "chronobank/solidity-shared-lib#v0.2.1",
-    "solidity-storage-lib": "chronobank/solidity-storage-lib#v0.1.2",
-    "solidity-roles-lib": "chronobank/solidity-roles-lib#v0.0.1",
+    "solidity-eventshistory-lib": "chronobank/solidity-eventshistory-lib#develop",
+    "solidity-storage-lib": "chronobank/solidity-storage-lib#develop",
+    "solidity-roles-lib": "chronobank/solidity-roles-lib#develop",
     "solidity-user-lib": "chronobank/solidity-user-lib#develop",
     "truffle-hdwallet-provider": "mikefluff/truffle-hdwallet-provider#7a2eccca1ba17c235a3ef258914ca74ea5f13014"
   },

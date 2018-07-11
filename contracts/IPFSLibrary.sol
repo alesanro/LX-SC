@@ -8,7 +8,7 @@ pragma solidity ^0.4.21;
 
 import "solidity-storage-lib/contracts/StorageAdapter.sol";
 import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
-import "./adapters/MultiEventsHistoryAdapter.sol";
+import "solidity-eventshistory-lib/contracts/MultiEventsHistoryAdapter.sol";
 
 
 contract IPFSLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2LibraryAdapter {
