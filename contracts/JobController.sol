@@ -34,15 +34,18 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     uint constant JOB_CONTROLLER_WORK_IS_ALREADY_PAUSED = JOB_CONTROLLER_SCOPE + 5;
     uint constant JOB_CONTROLLER_WORK_IS_NOT_PAUSED = JOB_CONTROLLER_SCOPE + 6;
     uint constant JOB_CONTROLLER_INVALID_WORKFLOW_TYPE = JOB_CONTROLLER_SCOPE + 7;
+    uint constant JOB_CONTROLLER_INVALID_ROLE = JOB_CONTROLLER_SCOPE + 8;
 
     event JobPosted(address indexed self, uint indexed jobId, bytes32 flowType, address client, uint skillsArea, uint skillsCategory, uint skills, uint defaultPay, bytes32 detailsIPFSHash, bool bindStatus);
     event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint rate, uint estimate, uint ontop);
     event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint price);
     event JobOfferAccepted(address indexed self, uint indexed jobId, address worker);
+    event StartWorkRequested(address indexed self, uint indexed jobId, uint at);
     event WorkStarted(address indexed self, uint indexed jobId, uint at);
     event TimeAdded(address indexed self, uint indexed jobId, uint time);  // Additional `time` in minutes
     event WorkPaused(address indexed self, uint indexed jobId, uint at);
     event WorkResumed(address indexed self, uint indexed jobId, uint at);
+    event EndWorkRequested(address indexed self, uint indexed jobId, uint at);
     event WorkFinished(address indexed self, uint indexed jobId, uint at);
     event WorkAccepted(address indexed self, uint indexed jobId, uint at);
     event WorkRejected(address indexed self, uint indexed jobId, uint at);
@@ -55,21 +58,33 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
 
     modifier onlyClient(uint _jobId) {
         if (store.get(jobClient, _jobId) != msg.sender) {
-            return;
+            _emitErrorCode(JOB_CONTROLLER_INVALID_ROLE);
+            assembly {
+                mstore(0, 13008) // JOB_CONTROLLER_INVALID_ROLE
+                return(0, 32)
+            }
         }
         _;
     }
 
     modifier onlyWorker(uint _jobId) {
         if (store.get(jobWorker, _jobId) != msg.sender) {
-            return;
+            _emitErrorCode(JOB_CONTROLLER_INVALID_ROLE);
+            assembly {
+                mstore(0, 13008) // JOB_CONTROLLER_INVALID_ROLE
+                return(0, 32)
+            }
         }
         _;
     }
 
     modifier onlyNotClient(uint _jobId) {
         if (store.get(jobClient, _jobId) == msg.sender) {
-            return;
+            _emitErrorCode(JOB_CONTROLLER_INVALID_ROLE);
+            assembly {
+                mstore(0, 13008) // JOB_CONTROLLER_INVALID_ROLE
+                return(0, 32)
+            }
         }
         _;
     }
@@ -87,6 +102,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
 
     modifier onlyValidWorkflow(uint _flowType) {
         if (!_isValidFlow(_flowType)) {
+            _emitErrorCode(JOB_CONTROLLER_INVALID_WORKFLOW_TYPE);
             assembly {
                 mstore(0, 13007) // JOB_CONTROLLER_INVALID_WORKFLOW_TYPE
                 return(0, 32)
@@ -98,6 +114,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     modifier onlyFlow(uint _jobId, uint _flowTypeGroup) {
         _flowTypeGroup = _flowTypeGroup & ~WORKFLOW_FEATURE_FLAGS;
         if (!_hasFlag(store.get(jobWorkflowType, _jobId), _flowTypeGroup)) {
+            _emitErrorCode(JOB_CONTROLLER_INVALID_WORKFLOW_TYPE);
             assembly {
                 mstore(0, 13007) // JOB_CONTROLLER_INVALID_WORKFLOW_TYPE
                 return(0, 32)
@@ -110,6 +127,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _flow = store.get(jobWorkflowType, _jobId);
         uint _jobState = store.get(jobState, _jobId);
         if (!_isStartedStateForFlow(_flow, _jobState)) {
+            _emitErrorCode(JOB_CONTROLLER_INVALID_STATE);
             assembly {
                 mstore(0, 13003) // JOB_CONTROLLER_INVALID_STATE
                 return(0, 32)
@@ -123,6 +141,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _flow = store.get(jobWorkflowType, _jobId);
         uint _jobState = store.get(jobState, _jobId);
         if (!_isFinishedStateForFlow(_flow, _jobState)) {
+            _emitErrorCode(JOB_CONTROLLER_INVALID_STATE);
             assembly {
                 mstore(0, 13003) // JOB_CONTROLLER_INVALID_STATE
                 return(0, 32)
@@ -435,6 +454,8 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     {
         store.set(jobPendingStartAt, _jobId, now);
         store.set(jobState, _jobId, JOB_STATE_PENDING_START);
+
+        JobController(getEventsHistory()).emitStartWorkRequested(_jobId, now);
         return OK;
     }
 
@@ -546,6 +567,8 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         _resumeWork(_jobId);  // In case worker have forgotten about paused timer
         store.set(jobPendingFinishAt, _jobId, now);
         store.set(jobState, _jobId, JOB_STATE_PENDING_FINISH);
+
+        JobController(getEventsHistory()).emitEndWorkRequested(_jobId, now);
         return OK;
     }
 
@@ -733,6 +756,10 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         emit JobOfferAccepted(_self(), _jobId, _worker);
     }
 
+    function emitStartWorkRequested(uint _jobId, uint _at) public {
+        emit StartWorkRequested(_self(), _jobId, _at);
+    }
+
     function emitWorkStarted(uint _jobId, uint _at) public {
         emit WorkStarted(_self(), _jobId, _at);
     }
@@ -747,6 +774,10 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
 
     function emitTimeAdded(uint _jobId, uint _time) public {
         emit TimeAdded(_self(), _jobId, _time);
+    }
+
+    function emitEndWorkRequested(uint _jobId, uint _at) public {
+        emit EndWorkRequested(_self(), _jobId, _at);
     }
 
     function emitWorkFinished(uint _jobId, uint _at) public {

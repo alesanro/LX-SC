@@ -28,6 +28,7 @@ const errorCodes = {
     JOB_CONTROLLER_WORK_IS_ALREADY_PAUSED: errorScope.jobcontroller + 5,
     JOB_CONTROLLER_WORK_IS_NOT_PAUSED: errorScope.jobcontroller + 6,
     JOB_CONTROLLER_INVALID_WORKFLOW_TYPE: errorScope.jobcontroller + 7,
+    JOB_CONTROLLER_INVALID_ROLE: errorScope.jobcontroller + 8,
 
 
     PAYMENT_GATEWAY_INSUFFICIENT_BALANCE: errorScope.paymentgateway + 1,

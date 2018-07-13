@@ -244,7 +244,6 @@ contract('JobController', function(accounts) {
     .then(reverter.snapshot);
   });
 
-
   describe('Contract setup', () => {
 
     it('should check auth on setup event history', () => {
@@ -382,7 +381,7 @@ contract('JobController', function(accounts) {
     it('should allow anyone to post a job', async () => {
       for (const account of accounts) {
         const jobId = await jobController.postJob.call(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: account})
-        assert.equal(jobId.toNumber(), 1) 
+        assert.equal(jobId.toNumber(), 1)
       }
     });
 
@@ -502,7 +501,7 @@ contract('JobController', function(accounts) {
       return Promise.resolve()
         .then(() => jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}))
         .then(() => jobController.postJobOffer.call(jobId, workerRate, jobEstimate, workerOnTop, {from: client}))
-        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
     });
 
     it("should allow to post job offer with no ontop payment", () => {
@@ -683,7 +682,7 @@ contract('JobController', function(accounts) {
           const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer.call(jobId, worker, { from: stranger, value: payment, })
         })
-        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
         .then(async () => {
           const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
@@ -691,31 +690,31 @@ contract('JobController', function(accounts) {
         .then(() => jobController.cancelJob.call(jobId, {from: client}))
         .then((code) => assert.equal(code, ErrorsNamespace.OK))
         .then(() => jobController.cancelJob.call(jobId, {from: stranger}))
-        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
         .then(() => jobController.startWork.call(jobId, {from: stranger}))
-        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
         .then(() => jobController.startWork(jobId, {from: worker}))
         .then(() => jobController.cancelJob.call(jobId, {from: client}))
         .then((code) => assert.equal(code, ErrorsNamespace.OK))
         .then(() => jobController.cancelJob.call(jobId, {from: stranger}))
-        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
 
         .then(() => jobController.confirmStartWork.call(jobId, {from: stranger}))
-        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
         .then(() => jobController.confirmStartWork(jobId, {from: client}))
         .then(() => jobController.cancelJob.call(jobId, {from: client}))
         .then((code) => assert.equal(code, ErrorsNamespace.OK))
         .then(() => jobController.cancelJob.call(jobId, {from: stranger}))
-        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
 
         .then(() => jobController.pauseWork.call(jobId, {from: stranger}))
-        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
         .then(() => jobController.pauseWork(jobId, {from: worker}))
         .then(tx => eventsHelper.extractEvents(tx, "WorkPaused"))
         .then(events => assert.equal(events.length, 1))
 
         .then(() => jobController.resumeWork.call(jobId, {from: stranger}))
-        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
         .then(() => jobController.resumeWork(jobId, {from: worker}))
         .then(tx => eventsHelper.extractEvents(tx, "WorkResumed"))
         .then(events => assert.equal(events.length, 1))
@@ -724,7 +723,7 @@ contract('JobController', function(accounts) {
           const additionalPayment = await jobController.calculateLock.call(worker, jobId, additionalTime, 0)
           return await jobController.addMoreTime.call(jobId, additionalTime, { from: stranger, value: additionalPayment, })
         })
-        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
         .then(async () => {
           const additionalPayment = await jobController.calculateLock.call(worker, jobId, additionalTime, 0)
           return await jobController.addMoreTime(jobId, additionalTime, { from: client, value: additionalPayment, })
@@ -733,15 +732,15 @@ contract('JobController', function(accounts) {
         .then(events => assert.equal(events.length, 1))
 
         .then(() => jobController.endWork.call(jobId, {from: stranger}))
-        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
         .then(() => jobController.endWork(jobId, {from: worker}))
         .then(() => jobController.cancelJob.call(jobId, {from: client}))
         .then((code) => assert.equal(code, ErrorsNamespace.OK))
         .then(() => jobController.cancelJob.call(jobId, {from: stranger}))
-        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
 
         .then(() => jobController.confirmEndWork.call(jobId, {from: stranger}))
-        .then((code) => assert.equal(code, ErrorsNamespace.UNAUTHORIZED))
+        .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
         .then(() => jobController.confirmEndWork(jobId, {from: client}))
 
         .then(() => jobController.releasePayment(jobId))
@@ -764,7 +763,7 @@ contract('JobController', function(accounts) {
       const operation = jobController.startWork;
       const args = [1, {from: worker}];
       const results = {
-        CREATED: ErrorsNamespace.UNAUTHORIZED,
+        CREATED: ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE,
         OFFER_ACCEPTED: ErrorsNamespace.OK,
         PENDING_START: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
       };
@@ -787,7 +786,7 @@ contract('JobController', function(accounts) {
       const operation = jobController.endWork;
       const args = [1, {from: worker}];
       const results = {
-          CREATED: ErrorsNamespace.UNAUTHORIZED,
+          CREATED: ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE,
           OFFER_ACCEPTED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
           PENDING_START: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
           STARTED: ErrorsNamespace.OK,
@@ -1004,7 +1003,7 @@ contract('JobController', function(accounts) {
       const jobEstimate = 180;
 
       return Promise.resolve()
-      // Post job
+        // Post job
         .then(() => jobController.postJob(jobFlow, skillsArea, skillsCategory, skills, jobDefaultPaySize, jobDetailsIpfsHash, {from: client}))
         .then(tx => eventsHelper.extractEvents(tx, "JobPosted"))
         .then(async (events) => {
@@ -1055,8 +1054,15 @@ contract('JobController', function(accounts) {
         })
         // Request start of work
         .then(() => jobController.startWork(jobId, {from: worker}))
-        .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
-        .then(events => assert.equal(events.length, 0))
+        .then(tx => eventsHelper.extractEvents(tx, "StartWorkRequested"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'StartWorkRequested');
+          const log = events[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), jobId);
+        })
         // Confirm start of work
         .then(() => jobController.confirmStartWork(jobId, {from: client}))
         .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
@@ -1108,8 +1114,15 @@ contract('JobController', function(accounts) {
         })
         // Request end of work
         .then(() => jobController.endWork(jobId, {from: worker}))
-        .then(tx => eventsHelper.extractEvents(tx, "WorkFinished"))
-        .then(events => assert.equal(events.length, 0))
+        .then(tx => eventsHelper.extractEvents(tx, "EndWorkRequested"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'EndWorkRequested');
+          const log = events[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), jobId);
+        })
         // Confirm end of work
         .then(() => jobController.confirmEndWork(jobId, {from: client}))
         .then(tx => eventsHelper.extractEvents(tx, "WorkFinished"))
@@ -1145,7 +1158,7 @@ contract('JobController', function(accounts) {
       const jobEstimate = 180;
 
       return Promise.resolve()
-      // Post job
+        // Post job
         .then(() => jobController.postJob(jobFlow, skillsArea, skillsCategory, skills, jobDefaultPaySize, jobDetails, {from: client}))
         .then(tx => eventsHelper.extractEvents(tx, "JobPosted"))
         .then(events => {
@@ -1196,8 +1209,15 @@ contract('JobController', function(accounts) {
         })
         // Request start of work
         .then(() => jobController.startWork(jobId, {from: worker}))
-        .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
-        .then(events => assert.equal(events.length, 0))
+        .then(tx => eventsHelper.extractEvents(tx, "StartWorkRequested"))
+        .then(events => {
+          assert.equal(events.length, 1);
+          assert.equal(events[0].address, multiEventsHistory.address);
+          assert.equal(events[0].event, 'StartWorkRequested');
+          const log = events[0].args;
+          assert.equal(log.self, jobController.address);
+          assert.equal(log.jobId.toString(), jobId);
+        })
         // Confirm start of work
         .then(() => jobController.confirmStartWork(jobId, {from: client}))
         .then(tx => eventsHelper.extractEvents(tx, "WorkStarted"))
@@ -1249,8 +1269,15 @@ contract('JobController', function(accounts) {
         })
         // Request end of work
         .then(() => jobController.endWork(jobId, {from: worker}))
-        .then(tx => eventsHelper.extractEvents(tx, "JobCanceled"))
-        .then(events => assert.equal(events.length, 0))
+        .then(tx => eventsHelper.extractEvents(tx, "EndWorkRequested"))
+        .then(events => {
+            assert.equal(events.length, 1);
+            assert.equal(events[0].address, multiEventsHistory.address);
+            assert.equal(events[0].event, 'EndWorkRequested');
+            const log = events[0].args;
+            assert.equal(log.self, jobController.address);
+            assert.equal(log.jobId.toString(), jobId);
+        })
         // Cancel job
         .then(() => jobController.cancelJob(1, {from: client}))
         .then(tx => eventsHelper.extractEvents(tx, "JobCanceled"))
@@ -1705,7 +1732,7 @@ contract('JobController', function(accounts) {
         await jobsDataProvider.getJobsByIds.call([ 1, 2, ]),
         JOBS_RESULT_OFFSET * 2
       )
-          
+
       assert.equal((await jobsDataProvider.getJobOffersCount.call(1)).toNumber(), 1)
       assert.equal((await jobsDataProvider.getJobOffersCount.call(2)).toNumber(), 0)
       assert.equal((await jobsDataProvider.getJobOffersCount.call(3)).toNumber(), 1)
@@ -1841,7 +1868,7 @@ contract('JobController', function(accounts) {
       {
         const jobs = (await jobsDataProvider.getJobs.call(
           allJobStates, allSkillsAreas, allSkillsCategories, allSkills, allPausedStates, 1, 100
-        )).removeZeros()        
+        )).removeZeros()
         assert.equal(jobs.toString(), [ 1, 2, 3, 4, ].toString())
       }
       {
