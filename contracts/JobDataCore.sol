@@ -90,7 +90,7 @@ contract JobDataCore is StorageAdapter, BitOps {
     // At which state job has been marked as FINALIZED
     StorageInterface.UIntUIntMapping jobFinalizedAt;
 
-    function JobDataCore(
+    constructor(
         Storage _store,
         bytes32 _crate
     )
