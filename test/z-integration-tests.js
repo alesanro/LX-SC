@@ -493,15 +493,19 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("should be able to add more time for a job with OK code", async () => {
                 const additionalTime = 150;
+                await contracts.jobController.submitAdditionalTimeRequest(otherJob.id, additionalTime, { from: users.worker2, })
                 const additionalPayment = await contracts.jobController.calculateLock(users.worker2, otherJob.id, additionalTime, 0)
-                assert.equal((await contracts.jobController.addMoreTime.call(otherJob.id, additionalTime, { from: users.client, value: additionalPayment})).toNumber(), ErrorsScope.OK)
+                assert.equal(
+                    (await contracts.jobController.acceptAdditionalTimeRequest.call(otherJob.id, additionalTime, { from: users.client, value: additionalPayment, })).toNumber(), 
+                    ErrorsScope.OK
+                )
             })
 
             it("should be able to add more time for a job", async () => {
                 const additionalTime = 150;
                 const additionalPayment = await contracts.jobController.calculateLock(users.worker2, otherJob.id, additionalTime, 0)
-                const tx = await contracts.jobController.addMoreTime(otherJob.id, additionalTime, { from: users.client, value: additionalPayment})
-                const timeAddedEvent = (await eventsHelper.findEvent([contracts.jobController,], tx, "TimeAdded"))[0]
+                const tx = await contracts.jobController.acceptAdditionalTimeRequest(otherJob.id, additionalTime, { from: users.client, value: additionalPayment, })
+                const timeAddedEvent = (await eventsHelper.findEvent([contracts.jobController,], tx, "TimeRequestAccepted"))[0]
                 assert.isDefined(timeAddedEvent)
             })
 

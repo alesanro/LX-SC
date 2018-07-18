@@ -150,7 +150,7 @@ contract JobsDataProvider is JobDataCore {
         return store.get(jobsCount);
     }
 
-    uint8 constant JOBS_RESULT_OFFSET = 21;
+    uint8 constant JOBS_RESULT_OFFSET = 22;
 
     /// @notice Gets jobs details in an archived way (too little stack size
     /// for such amount of return values)
@@ -175,7 +175,8 @@ contract JobsDataProvider is JobDataCore {
     ///     "_pausedFor": "`uint` work's pause duration",
     ///     "_pendingFinishAt": "`uint` pending finish timestamp",
     ///     "_finishedAt": "`uint` work finished timestamp",
-    ///     "_finalizedAt": "`uint` paycheck finalized timestamp"
+    ///     "_finalizedAt": "`uint` paycheck finalized timestamp",
+    ///     "_timeRequested": "`uint` additional time requested by a worker, must be accepted/rejected by a client",
     /// }
     function getJobsByIds(uint[] _jobIds) public view returns (
         bytes32[] _results
@@ -203,6 +204,7 @@ contract JobsDataProvider is JobDataCore {
             _results[_idx * JOBS_RESULT_OFFSET + 18] = bytes32(store.get(jobPendingFinishAt, _jobIds[_idx]));
             _results[_idx * JOBS_RESULT_OFFSET + 19] = bytes32(store.get(jobFinishTime, _jobIds[_idx]));
             _results[_idx * JOBS_RESULT_OFFSET + 20] = bytes32(store.get(jobFinalizedAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 21] = bytes32(store.get(jobRequestedAdditionalTime, _jobIds[_idx]));
 
             if (address(_boardController) != 0x0) {
                 _results[_idx * JOBS_RESULT_OFFSET + 1] = bytes32(_boardController.getJobsBoard(_jobIds[_idx]));

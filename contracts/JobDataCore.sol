@@ -70,6 +70,9 @@ contract JobDataCore is StorageAdapter, BitOps {
     /// @dev Workflow type for a job
     StorageInterface.UIntUIntMapping jobWorkflowType;  // jobId => workflow type
 
+    /// @dev Requested amount of time a worker needs to complete a job
+    StorageInterface.UIntUIntMapping jobRequestedAdditionalTime; // In minutes
+
     /// @dev Default pay for a posted job that are recommended for offers
     StorageInterface.UIntUIntMapping jobDefaultPay;  // jobId => default pay size
     StorageInterface.UIntAddressUIntMapping jobOfferRate; // Per minute.
@@ -125,6 +128,7 @@ contract JobDataCore is StorageAdapter, BitOps {
         jobPausedFor.init("jobPausedFor");
 
         jobWorkflowType.init("jobWorkflowType");
+        jobRequestedAdditionalTime.init("jobRequestedTime");
         jobDefaultPay.init("jobDefaultPay");
         jobOfferRate.init("jobOfferRate");
         jobOfferEstimate.init("jobOfferEstimate");
