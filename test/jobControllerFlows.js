@@ -384,17 +384,51 @@ contract("JobController workflows", accounts => {
 				assert.equal(log.jobId.toString(), jobId);
 			})
 		}
-		
-		this._testMoreTimeAdded = () => {
-			it("should emit 'TimeAdded' event on adding more time", async () => {
+
+		this._testSubmitTimeRequest = () => {
+			it("should emit 'TimeRequestSubmitted' event on accepting more time request", async () => {
 				const additionalTime = 60
-				const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
-				const tx = await contracts.jobController.addMoreTime(jobId, additionalTime, { from: client, value: additionalPayment, })
+				const tx = await contracts.jobController.submitAdditionalTimeRequest(jobId, additionalTime, { from: worker, })
 				
-				const events = eventsHelper.extractEvents(tx, "TimeAdded")
+				const events = eventsHelper.extractEvents(tx, "TimeRequestSubmitted")
 				assert.equal(events.length, 1);
 				assert.equal(events[0].address, contracts.multiEventsHistory.address);
-				assert.equal(events[0].event, 'TimeAdded');
+				assert.equal(events[0].event, 'TimeRequestSubmitted');
+				
+				const log = events[0].args;
+				assert.equal(log.self, contracts.jobController.address);
+				assert.equal(log.jobId.toString(), jobId);
+				assert.equal(log.time.toString(), additionalTime.toString());
+			})
+		}
+
+		this._testAcceptTimeRequest = () => {
+			it("should emit 'TimeRequestAccepted' event on accepting more time request", async () => {
+				const additionalTime = 60
+				const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+				const tx = await contracts.jobController.acceptAdditionalTimeRequest(jobId, additionalTime, { from: client, value: additionalPayment, })
+				
+				const events = eventsHelper.extractEvents(tx, "TimeRequestAccepted")
+				assert.equal(events.length, 1);
+				assert.equal(events[0].address, contracts.multiEventsHistory.address);
+				assert.equal(events[0].event, 'TimeRequestAccepted');
+				
+				const log = events[0].args;
+				assert.equal(log.self, contracts.jobController.address);
+				assert.equal(log.jobId.toString(), jobId);
+				assert.equal(log.time.toString(), additionalTime.toString());
+			})
+		}
+
+		this._testRejectTimeRequest = () => {
+			it("should emit 'TimeRequestRejected' event on accepting more time request", async () => {
+				const additionalTime = 60
+				const tx = await contracts.jobController.rejectAdditionalTimeRequest(jobId, { from: client, })
+				
+				const events = eventsHelper.extractEvents(tx, "TimeRequestRejected")
+				assert.equal(events.length, 1);
+				assert.equal(events[0].address, contracts.multiEventsHistory.address);
+				assert.equal(events[0].event, 'TimeRequestRejected');
 				
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
@@ -751,113 +785,195 @@ contract("JobController workflows", accounts => {
 
 				after(async () => await reverter.revert())
 
-				it("should NOT allow to accept offer by non-client with JOB_CONTROLLER_INVALID_ROLE code", async () => {
-					const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
-					assert.equal(
-						(await contracts.jobController.acceptOffer.call(jobId, worker, { from: stranger, value: payment, })).toNumber(),
-						ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE
-					)
+				describe("accepting offer", () => {
+					
+					it("should NOT allow to accept offer by non-client with JOB_CONTROLLER_INVALID_ROLE code", async () => {
+						const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+						assert.equal(
+							(await contracts.jobController.acceptOffer.call(jobId, worker, { from: stranger, value: payment, })).toNumber(),
+							ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE
+						)
+					})
+	
+					it("should allow to accept offer by a client", async () => {
+						const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+						await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
+						assert.equal(await contracts.jobsDataProvider.getJobWorker.call(jobId), worker)
+					})
+	
+					it("should allow to cancel a job by a client after an offer was accepted with OK code", async () => {
+						assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: client, })).toNumber(), ErrorsNamespace.OK)
+					})
+	
+					it("should NOT allow to cancel a job by non-client after an offer was accepted with JOB_CONTROLLER_INVALID_ROLE code", async () => {
+						assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
+					})
+				})
+				
+				describe("start work", () => {
+					
+					it("should NOT allow to start a job by non-worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
+						assert.equal((await contracts.jobController.startWork.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
+					})
+
+					it("should allow to start a job by a worker with OK code", async () => {
+						await contracts.jobController.startWork(jobId, { from: worker, })
+						assert.equal((await contracts.jobsDataProvider.getJobState(jobId)).toNumber(), JobState.PENDING_START)
+					})
+	
+					it("should allow to cancel a job by a client after a job was started with OK code", async () => {
+						assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: client, })).toNumber(), ErrorsNamespace.OK)
+					})
+	
+					it("should NOT allow to cancel a job by non-client after a job was started with JOB_CONTROLLER_INVALID_ROLE code", async () => {
+						assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
+					})
+	
+					it("should NOT allow to confirm that a job was started by non-client with JOB_CONTROLLER_INVALID_ROLE code", async () => {
+						assert.equal((await contracts.jobController.confirmStartWork.call(jobId, { from: stranger, })), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
+					})
+	
+					it("should allow to confirm that a job was started by client with OK code", async () => {
+						assert.equal((await contracts.jobController.confirmStartWork.call(jobId, { from: client, })), ErrorsNamespace.OK)
+					})
+	
+					it("should NOT allow to pause work by non-worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
+						assert.equal((await contracts.jobController.pauseWork.call(jobId, { from: stranger, })), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
+					})
+	
+					it("should allow to pause work by worker", async () => {
+						const tx = await contracts.jobController.pauseWork(jobId, { from: worker, })
+						assert.equal(eventsHelper.extractEvents(tx, "WorkPaused").length, 1)
+					})
+	
+					it("should NOT allow to resume work by non-worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
+						assert.equal((await contracts.jobController.resumeWork.call(jobId, { from: stranger, })), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
+					})
+	
+					it("should allow to resume work by a worker", async () => {
+						const tx = await contracts.jobController.resumeWork(jobId, { from: worker, })
+						assert.equal(eventsHelper.extractEvents(tx, "WorkResumed").length, 1)
+					})
 				})
 
-				it("should allow to accept offer by a client", async () => {
-					const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
-					await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
-					assert.equal(await contracts.jobsDataProvider.getJobWorker.call(jobId), worker)
+				describe("requesting additional time", () => {
+
+					it("should NOT allow to submit additional time request by a client with JOB_CONTROLLER_INVALID_ROLE code", async () => {
+						assert.equal(
+							(await contracts.jobController.submitAdditionalTimeRequest.call(jobId, additionalTime, { from: client, })).toString(16),
+							ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE.toString(16)
+						)
+					})
+	
+					it("should NOT allow to accept time request by a client without submitting it before by a worker with JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED code", async () => {
+						assert.equal(
+							(await contracts.jobController.acceptAdditionalTimeRequest.call(jobId, additionalTime, { from: client, })).toString(16),
+							ErrorsNamespace.JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED.toString(16)
+						)
+					})
+	
+					it("should NOT allow to reject time request by a client without submitting it before by a worker with JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED code", async () => {
+						assert.equal(
+							(await contracts.jobController.rejectAdditionalTimeRequest.call(jobId, { from: client, })).toString(16),
+							ErrorsNamespace.JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED.toString(16)
+						)
+					})
+	
+					it("should NOT allow to submit additional time request by a stranger with JOB_CONTROLLER_INVALID_ROLE code", async () => {
+						assert.equal(
+							(await contracts.jobController.submitAdditionalTimeRequest.call(jobId, additionalTime, { from: stranger, })).toString(16),
+							ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE.toString(16)
+						)
+					})
+	
+					it("should allow to submit additional time request by a worker", async () => {
+						const tx = await contracts.jobController.submitAdditionalTimeRequest(jobId, additionalTime, {  from: worker, })
+						assert.equal(eventsHelper.extractEvents(tx, "TimeRequestSubmitted").length, 1)
+					})
+	
+					it("should NOT allow to accept additional time request by a worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
+						const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+						assert.equal(
+							(await contracts.jobController.acceptAdditionalTimeRequest.call(jobId, additionalTime, { from: worker, value: additionalPayment, })).toString(16),
+							ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE.toString(16)
+						)
+					})
+	
+					it("should NOT allow to reject additional time request by a worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
+						assert.equal(
+							(await contracts.jobController.rejectAdditionalTimeRequest.call(jobId, { from: worker, })).toString(16),
+							ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE.toString(16)
+						)
+					})
+					
+					it("should NOT allow to accept additional time request by a client with invalid additional time value with JOB_CONTROLLER_INCORRECT_TIME_PROVIDED code", async () => {
+						const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+						assert.equal(
+							(await contracts.jobController.acceptAdditionalTimeRequest.call(jobId, additionalTime + 1, { from: client, value: additionalPayment, })).toString(16),
+							ErrorsNamespace.JOB_CONTROLLER_INCORRECT_TIME_PROVIDED.toString(16)
+						)
+					})
+					
+					it("should THROW and NOT allow to accept additional time request by a client with invalid payment value with JOB_CONTROLLER_INVALID_ROLE code", async () => {
+						const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+						await asserts.throws(
+							contracts.jobController.acceptAdditionalTimeRequest.call(jobId, additionalTime, { from: client, value: additionalPayment.sub(1), })
+						)
+					})
+	
+					it("should allow to add more time by a client", async () => {
+						const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+						const tx = await contracts.jobController.acceptAdditionalTimeRequest(jobId, additionalTime, { from: client, value: additionalPayment, })
+						assert.equal(eventsHelper.extractEvents(tx, "TimeRequestAccepted").length, 1)
+					})
+	
+					it("should NOT allow to accept additional time request by a client twice with JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED code", async () => {
+						const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+						assert.equal(
+							(await contracts.jobController.acceptAdditionalTimeRequest.call(jobId, additionalTime, { from: client, value: additionalPayment, })).toString(16),
+							ErrorsNamespace.JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED.toString(16)
+						)
+					})
+	
+					it("should NOT allow to reject additional time request by a client after acceptance with JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED code", async () => {
+						assert.equal(
+							(await contracts.jobController.rejectAdditionalTimeRequest.call(jobId, { from: client, })).toString(16),
+							ErrorsNamespace.JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED.toString(16)
+						)
+					})
 				})
 
-				it("should allow to cancel a job by a client after an offer was accepted with OK code", async () => {
-					assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: client, })).toNumber(), ErrorsNamespace.OK)
-				})
-
-				it("should NOT allow to cancel a job by non-client after an offer was accepted with JOB_CONTROLLER_INVALID_ROLE code", async () => {
-					assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
-				})
-
-				it("should NOT allow to start a job by non-worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
-					assert.equal((await contracts.jobController.startWork.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
-				})
-
-				it("should allow to start a job by a worker with OK code", async () => {
-					await contracts.jobController.startWork(jobId, { from: worker, })
-					assert.equal((await contracts.jobsDataProvider.getJobState(jobId)).toNumber(), JobState.PENDING_START)
-				})
-
-				it("should allow to cancel a job by a client after a job was started with OK code", async () => {
-					assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: client, })).toNumber(), ErrorsNamespace.OK)
-				})
-
-				it("should NOT allow to cancel a job by non-client after a job was started with JOB_CONTROLLER_INVALID_ROLE code", async () => {
-					assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
-				})
-
-				it("should NOT allow to confirm that a job was started by non-client with JOB_CONTROLLER_INVALID_ROLE code", async () => {
-					assert.equal((await contracts.jobController.confirmStartWork.call(jobId, { from: stranger, })), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
-				})
-
-				it("should allow to confirm that a job was started by client with OK code", async () => {
-					assert.equal((await contracts.jobController.confirmStartWork.call(jobId, { from: client, })), ErrorsNamespace.OK)
-				})
-
-				it("should NOT allow to pause work by non-worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
-					assert.equal((await contracts.jobController.pauseWork.call(jobId, { from: stranger, })), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
-				})
-
-				it("should allow to pause work by worker", async () => {
-					const tx = await contracts.jobController.pauseWork(jobId, { from: worker, })
-					assert.equal(eventsHelper.extractEvents(tx, "WorkPaused").length, 1)
-				})
-
-				it("should NOT allow to resume work by non-worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
-					assert.equal((await contracts.jobController.resumeWork.call(jobId, { from: stranger, })), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
-				})
-
-				it("should allow to resume work by a worker", async () => {
-					const tx = await contracts.jobController.resumeWork(jobId, { from: worker, })
-					assert.equal(eventsHelper.extractEvents(tx, "WorkResumed").length, 1)
-				})
-
-				it("should NOT allow to add more time by non-client with JOB_CONTROLLER_INVALID_ROLE code", async () => {
-					const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
-					assert.equal(
-						(await contracts.jobController.addMoreTime.call(jobId, additionalTime, {  from: stranger, value: additionalPayment, })).toNumber(),
-						ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE
-					)
-				})
-
-				it("should allow to add more time by a client", async () => {
-					const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
-					const tx = await contracts.jobController.addMoreTime(jobId, additionalTime, {  from: client, value: additionalPayment, })
-					assert.equal(eventsHelper.extractEvents(tx, "TimeAdded").length, 1)
-				})
-
-				it("should NOT allow to end work by non-worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
-					assert.equal((await contracts.jobController.endWork.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
-				})
-
-				it("should allow to end work by a worker", async () => {
-					await contracts.jobController.endWork(jobId, { from: worker, })
-					assert.equal((await contracts.jobsDataProvider.getJobState(jobId)).toNumber(), JobState.PENDING_FINISH)
-				})
-
-				it("should NOT be able to cancel job by non-client when work is done with JOB_CONTROLLER_INVALID_ROLE code", async () => {
-					assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
-				})
-
-				it("should NOT be able to cancel job by a client when work is done with JOB_CONTROLLER_INVALID_STATE code", async () => {
-					assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: client, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE)
-				})
-
-				it("should NOT be able to confirm work was ended by non-client with JOB_CONTROLLER_INVALID_ROLE code", async () => {
-					assert.equal((await contracts.jobController.confirmEndWork.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
-				})
-
-				it("should be able to confirm work was ended by a client with OK code", async () => {
-					assert.equal((await contracts.jobController.confirmEndWork.call(jobId, { from: client, })).toNumber(), ErrorsNamespace.OK)
-				})
-
-				it("should be able to release payment after job is done", async () => {
-					await contracts.jobController.releasePayment(jobId)
-					assert.equal((await contracts.jobsDataProvider.getJobState.call(jobId)).toNumber(), JobState.FINALIZED)
+				describe("end work", () => {
+					
+					it("should NOT allow to end work by non-worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
+						assert.equal((await contracts.jobController.endWork.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
+					})
+	
+					it("should allow to end work by a worker", async () => {
+						await contracts.jobController.endWork(jobId, { from: worker, })
+						assert.equal((await contracts.jobsDataProvider.getJobState(jobId)).toNumber(), JobState.PENDING_FINISH)
+					})
+	
+					it("should NOT be able to cancel job by non-client when work is done with JOB_CONTROLLER_INVALID_ROLE code", async () => {
+						assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
+					})
+	
+					it("should NOT be able to cancel job by a client when work is done with JOB_CONTROLLER_INVALID_STATE code", async () => {
+						assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: client, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE)
+					})
+	
+					it("should NOT be able to confirm work was ended by non-client with JOB_CONTROLLER_INVALID_ROLE code", async () => {
+						assert.equal((await contracts.jobController.confirmEndWork.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
+					})
+	
+					it("should be able to confirm work was ended by a client with OK code", async () => {
+						assert.equal((await contracts.jobController.confirmEndWork.call(jobId, { from: client, })).toNumber(), ErrorsNamespace.OK)
+					})
+	
+					it("should be able to release payment after job is done", async () => {
+						await contracts.jobController.releasePayment(jobId)
+						assert.equal((await contracts.jobsDataProvider.getJobState.call(jobId)).toNumber(), JobState.FINALIZED)
+					})
 				})
 			})
 
@@ -1033,21 +1149,46 @@ contract("JobController workflows", accounts => {
 				)
 			})
 
-			it("should NOT add null amount of work time", async () => {
-				const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+
+			it("should THROW and NOT allow to submit null amount of work time", async () => {
 				await asserts.throws(
-					contracts.jobController.addMoreTime.call(jobId, 0, { from: client, value: additionalPayment, })
+					contracts.jobController.submitAdditionalTimeRequest.call(jobId, 0, { from: worker, })
 				)
 			})
 
-			it("should NOT success when trying to add more time if operation " +
+			it("should success when trying to submit more time if operation " +
 				"is not allowed by Payment Processor", async () => {
 				await contracts.paymentProcessor.enableServiceMode()
 				assert.isTrue(await contracts.paymentProcessor.serviceMode.call())
 
+				assert.equal(
+					(await contracts.jobController.submitAdditionalTimeRequest.call(jobId, additionalTime, { from: worker, })).toString(16),
+					ErrorsNamespace.OK.toString(16)
+				)
+			})
+
+			it("should NOT success when trying to accept submitted time request if operation " +
+				"is not allowed by Payment Processor", async () => {
+				await contracts.paymentProcessor.enableServiceMode()
+				assert.isTrue(await contracts.paymentProcessor.serviceMode.call())
+
+				await contracts.jobController.submitAdditionalTimeRequest(jobId, additionalTime, { from: worker, })
+
 				const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
 				await asserts.throws(
-					contracts.jobController.addMoreTime.call(jobId, additionalTime, { from: client, value: additionalPayment, })
+					contracts.jobController.acceptAdditionalTimeRequest.call(jobId, additionalTime, { from: client, value: additionalPayment, })
+				)
+			})
+
+			it("should success when trying to reject submitted time request if operation " +
+				"is not allowed by Payment Processor", async () => {
+				await contracts.paymentProcessor.enableServiceMode()
+				assert.isTrue(await contracts.paymentProcessor.serviceMode.call())
+
+				await contracts.jobController.submitAdditionalTimeRequest(jobId, additionalTime, { from: worker, })
+				assert.equal(
+					(await contracts.jobController.rejectAdditionalTimeRequest.call(jobId, { from: client, })).toString(16),
+					ErrorsNamespace.OK.toString(16)
 				)
 			})
 		})
@@ -1075,7 +1216,8 @@ contract("JobController workflows", accounts => {
 					eventsTester._testStartWorking()
 					eventsTester._testWorkPaused()
 					eventsTester._testWorkResumed()
-					eventsTester._testMoreTimeAdded()
+					eventsTester._testSubmitTimeRequest()
+					eventsTester._testAcceptTimeRequest()
 					eventsTester._testEndWorking()
 					eventsTester._testReleasePayment()
 				})
@@ -1090,7 +1232,8 @@ contract("JobController workflows", accounts => {
 					eventsTester._testConfirmStartWork()
 					eventsTester._testWorkPaused()
 					eventsTester._testWorkResumed()
-					eventsTester._testMoreTimeAdded()
+					eventsTester._testSubmitTimeRequest()
+					eventsTester._testAcceptTimeRequest()
 					eventsTester._testEndWorking()
 					eventsTester._testReleasePayment()
 				})
@@ -1104,7 +1247,8 @@ contract("JobController workflows", accounts => {
 					eventsTester._testStartWorking()
 					eventsTester._testWorkPaused()
 					eventsTester._testWorkResumed()
-					eventsTester._testMoreTimeAdded()
+					eventsTester._testSubmitTimeRequest()
+					eventsTester._testRejectTimeRequest()
 					eventsTester._testEndWorking()
 					eventsTester._testConfirmEndWork()
 					eventsTester._testReleasePayment()
@@ -1120,7 +1264,8 @@ contract("JobController workflows", accounts => {
 					eventsTester._testConfirmStartWork()
 					eventsTester._testWorkPaused()
 					eventsTester._testWorkResumed()
-					eventsTester._testMoreTimeAdded()
+					eventsTester._testSubmitTimeRequest()
+					eventsTester._testRejectTimeRequest()
 					eventsTester._testEndWorking()
 					eventsTester._testConfirmEndWork()
 					eventsTester._testReleasePayment()
@@ -1600,20 +1745,33 @@ contract("JobController workflows", accounts => {
 					assert.equal(eventsHelper.extractEvents(tx, "WorkResumed").length, 1)
 				})
 
-				it("should NOT allow to add more time by a client (and anyone) with JOB_CONTROLLER_INVALID_WORKFLOW_TYPE code", async () => {
+				it("should NOT allow to submit more time request by a worker (and anyone) with JOB_CONTROLLER_INVALID_WORKFLOW_TYPE code", async () => {
 					const additionalTime = 60
-					const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
 					assert.equal(
-						(await contracts.jobController.addMoreTime.call(jobId, additionalTime, {  from: client, value: additionalPayment, })).toNumber(),
+						(await contracts.jobController.submitAdditionalTimeRequest.call(jobId, additionalTime, { from: worker, })).toNumber(),
 						ErrorsNamespace.JOB_CONTROLLER_INVALID_WORKFLOW_TYPE
 					)
 				})
 
-				it("should NOT allow to add more time by a client (and anyone)", async () => {
+				it("should NOT allow to accept more time request by a client (and anyone) with JOB_CONTROLLER_INVALID_WORKFLOW_TYPE code", async () => {
 					const additionalTime = 60
-					const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
-					const tx = await contracts.jobController.addMoreTime(jobId, additionalTime, {  from: client, value: additionalPayment, })
-					assert.equal(eventsHelper.extractEvents(tx, "TimeAdded").length, 0)
+					assert.equal(
+						(await contracts.jobController.acceptAdditionalTimeRequest.call(jobId, additionalTime, { from: client, value: 0, })).toNumber(),
+						ErrorsNamespace.JOB_CONTROLLER_INVALID_WORKFLOW_TYPE
+					)
+				})
+
+				it("should NOT allow to reject more time request by a client (and anyone) with JOB_CONTROLLER_INVALID_WORKFLOW_TYPE code", async () => {
+					assert.equal(
+						(await contracts.jobController.rejectAdditionalTimeRequest.call(jobId, { from: client, })).toNumber(),
+						ErrorsNamespace.JOB_CONTROLLER_INVALID_WORKFLOW_TYPE
+					)
+				})
+
+				it("should NOT allow to submit more time by a client (and anyone)", async () => {
+					const additionalTime = 60
+					const tx = await contracts.jobController.submitAdditionalTimeRequest(jobId, additionalTime, {  from: worker, })
+					assert.equal(eventsHelper.extractEvents(tx, "TimeRequestSubmitted").length, 0)
 				})
 
 				it("should NOT allow to accept work results in the middle of work process by a stranger with JOB_CONTROLLER_INVALID_ROLE code", async () => {
