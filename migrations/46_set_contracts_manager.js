@@ -14,6 +14,7 @@ const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
 const JobController = artifacts.require('./JobController.sol');
 const JobsDataProvider = artifacts.require('./JobsDataProvider.sol');
 const BoardController = artifacts.require('./BoardController.sol');
+const UserRegistry = artifacts.require('./UserRegistry.sol');
 
 module.exports = deployer => {
     deployer.then(async () => {
@@ -32,6 +33,7 @@ module.exports = deployer => {
         await contractsManager.addContract(JobController.address, "JobController");
         await contractsManager.addContract(JobsDataProvider.address, "JobsDataProvider");
         await contractsManager.addContract(BoardController.address, "BoardController");
+        await contractsManager.addContract(UserRegistry.address, "UserRegistry")
 
         console.log("[Migration] ContractsManager #setup")
 	})

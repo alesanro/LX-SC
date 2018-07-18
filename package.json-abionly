@@ -4,13 +4,13 @@
     "description": "ChronoBank Labor-X Smart Contracts",
     "scripts": {
         "release": "standard-version",
-        "test:all": "./node_modules/truffle/build/cli.bundled.js test",
-        "compile": "./node_modules/truffle/build/cli.bundled.js compile",
-        "compile:all": "./node_modules/truffle/build/cli.bundled.js compile --all",
-        "migrate": "./node_modules/truffle/build/cli.bundled.js migrate",
-        "migrate:reset": "./node_modules/truffle/build/cli.bundled.js migrate --reset",
-        "console": "./node_modules/truffle/build/cli.bundled.js console --network development",
-        "testrpc": "./node_modules/ganache-cli/build/cli.node.js -g 1 --gasLimit 4700000 --trace_request true | grep -Ev \"FilterSubprovider|eth_getFilterChanges\""
+        "test": "npx truffle test",
+        "compile": "npx truffle compile",
+        "compile:all": "npx truffle compile --all",
+        "migrate": "npx truffle migrate",
+        "migrate:reset": "npx truffle migrate --reset",
+        "console": "npx truffle console --network development",
+        "testrpc": "npx ganache-cli -g 1 --gasLimit 4700000 --trace_request true | grep -Ev \"FilterSubprovider|eth_getFilterChanges\""
     },
     "repository": {
         "type": "git",

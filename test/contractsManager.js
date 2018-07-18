@@ -13,6 +13,7 @@ const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
 const JobController = artifacts.require('./JobController.sol');
 const JobsDataProvider = artifacts.require('./JobsDataProvider.sol');
 const BoardController = artifacts.require('./BoardController.sol');
+const UserRegistry = artifacts.require('./UserRegistry.sol');
 
 contract('Contracts Manager', function(accounts) {
     let contractsManager;
@@ -49,6 +50,10 @@ contract('Contracts Manager', function(accounts) {
 
         it("can provide UserFactory address.", async () => {
             assert.equal(await contractsManager.getContractAddressByType("UserFactory"), UserFactory.address);
+        });
+
+        it("can provide UserRegistry address.", async () => {
+            assert.equal(await contractsManager.getContractAddressByType("UserRegistry"), UserRegistry.address);
         });
 
         it("can provide UserLibrary address.", async () => {

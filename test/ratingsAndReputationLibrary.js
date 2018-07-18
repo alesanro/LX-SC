@@ -82,11 +82,10 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     const jobSkills = _jobSkills;  // uint
 
     const use2FA = false;
-    const recovery = "0xffffffffffffffffffffffffffffffffffffffff";
 
     return Promise.resolve()
     .then(() => ignoreSkillsCheck(true))
-    .then(() => userFactory.createUserWithProxyAndRecovery(_worker, recovery, use2FA))
+    .then(() => userFactory.createUserWithProxyAndRecovery(_worker, use2FA))
     // .then(() => userLibrary.setMany(_worker, jobArea, [jobCategory], [jobSkills], { from: accounts[0], }))
     .then(() => jobController.postJob(
       jobFlow, jobArea, jobCategory, jobSkills, 4 /* default pay size */, "Job details", {from: _client}

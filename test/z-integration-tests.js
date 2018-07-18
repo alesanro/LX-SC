@@ -1184,9 +1184,10 @@ contract('Integration tests (user stories)', (accounts) => {
 
         before(async () => {
             userRecoveryAddress = contracts.recovery.address
+            await contracts.userFactory.setUserRecoveryAddress(userRecoveryAddress)
             
             const recoverData = contracts.recovery.contract.recoverUser.getData(0x0, 0x0)
-            await contracts.rolesLibrary.addRoleCapability(roles.moderator, contracts.recovery.address, recoverData, { from: users.contractOwner })
+            await contracts.rolesLibrary.addRoleCapability(roles.moderator, userRecoveryAddress, recoverData, { from: users.contractOwner })
         })
 
         after(async () => {
@@ -1197,7 +1198,6 @@ contract('Integration tests (user stories)', (accounts) => {
             it("and anyone should create user if all is good with OK code", async () => {
                 assert.equal((await contracts.userFactory.createUserWithProxyAndRecovery.call(
                     userMainAddress,
-                    userRecoveryAddress,
                     userInfo.use2FA,
                     { from: users.default, }
                 )).toNumber(), ErrorsScope.OK)
@@ -1206,7 +1206,6 @@ contract('Integration tests (user stories)', (accounts) => {
             it("moderator should moderate user's data and create user if all is good", async () => {
                 const tx = await contracts.userFactory.createUserWithProxyAndRecovery(
                     userMainAddress,
-                    userRecoveryAddress,
                     userInfo.use2FA,
                     { from: users.default, }
                 )
