@@ -1,4 +1,4 @@
-# LX-SC
+# LX-SC [![Build Status](https://travis-ci.org/ChronoBank/LX-SC.svg?branch=master)](https://travis-ci.org/ChronoBank/LX-SC)
 
 # Installation
 
@@ -160,6 +160,4 @@ Database, provides functionality for managing user's skills, categories and area
 
 # Contract Interactions Diagram
 
-![Contract Interactions][contract_interactions]
-
-[contract_interactions]: ./docs/contract_interactions.png
+![contract_interactions](https://user-images.githubusercontent.com/2529842/42953132-670ae056-8b82-11e8-816b-ca4348ed276c.png)
