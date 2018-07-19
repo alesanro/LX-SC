@@ -187,11 +187,39 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     external
     returns (uint)
     {
+        return this.transferAllAndWithdraw(
+            _from,
+            _to,
+            _value,
+            _change,
+            _feeFromValue,
+            _additionalFee,
+            false
+        );
+    }
+
+    function transferAllAndWithdraw(
+        address _from,
+        address _to,
+        uint _value,
+        address _change,
+        uint _feeFromValue,
+        uint _additionalFee,
+        bool _shouldWithdraw
+    )
+    auth
+    external
+    returns (uint)
+    {
         require(_from != 0x0);
 
         _addBalance(_to, _value);
         _emitTransferred(_from, _to, _value);
 
+        if (_shouldWithdraw) {
+            require(OK == _withdraw(_to, _value));
+        }
+        
         uint _total = _value;
         uint _fee = calculateFee(_feeFromValue).add(_additionalFee);
         address _feeAddress = getFeeAddress();
@@ -206,6 +234,10 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
             _addBalance(_change, _changeAmount);
             _emitTransferred(_from, _change, _changeAmount);
             _total = _total.add(_changeAmount);
+            
+            if (_shouldWithdraw) {
+                require(OK == _withdraw(_change, _changeAmount));
+            }
         }
 
         _subBalance(_from, _total);

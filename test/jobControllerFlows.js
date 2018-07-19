@@ -71,6 +71,10 @@ contract("JobController workflows", accounts => {
 		asserts.equal(expectedValue)(await contracts.paymentGateway.getBalance(address))
 	}
 
+	const assertEthBalance = async (address, expectedValue) => {
+		asserts.equal(expectedValue)(await helpers.getEthBalance(address))
+	}
+
 	const ignoreAuth = async (enabled = true) => {
 		if (enabled) {
 			await contracts.jobController.setRoles2Library(Roles2Library.address)
@@ -226,7 +230,7 @@ contract("JobController workflows", accounts => {
 		await contracts.jobController.postJob(Workflow.TM_WITHOUT_CONFIRMATION, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 		await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
 		const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
-		const acceptOfferTx = await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
+		await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 
 		await assertInternalBalance(client, clientBalanceBefore)
 		await assertInternalBalance(jobId, payment)
@@ -234,10 +238,16 @@ contract("JobController workflows", accounts => {
 		await contracts.jobController.startWork(jobId, { from: worker, })
 		await timeOps()
 		await contracts.jobController.endWork(jobId, { from: worker, })
+
+		const clientEthBalanceBefore = await helpers.getEthBalance(client)
+		const workerEthBalanceBefore = await helpers.getEthBalance(worker)
+
 		await contracts.jobController.releasePayment(jobId)
 
-		await assertInternalBalance(client, clientBalanceBefore.plus(payment.minus(jobPaymentEstimate)))
-		await assertInternalBalance(worker, workerBalanceBefore.add(jobPaymentEstimate))
+		await assertInternalBalance(client, clientBalanceBefore)
+		await assertInternalBalance(worker, workerBalanceBefore)
+		await assertEthBalance(client, clientEthBalanceBefore.add(payment.minus(jobPaymentEstimate)))
+		await assertEthBalance(worker, workerEthBalanceBefore.add(jobPaymentEstimate))
 		await assertInternalBalance(jobId, 0)
 	}
 
@@ -1305,12 +1315,10 @@ contract("JobController workflows", accounts => {
 
 			describe("when cancelling job should use payment processor and", () => {
 				before(async () => {
-					clientBalanceBefore = await contracts.paymentGateway.getBalance(client)
-					workerBalanceBefore = await contracts.paymentGateway.getBalance(worker)
-
+					
 					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 					await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
-
+					
 					payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
 					await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 				})
@@ -1336,29 +1344,31 @@ contract("JobController workflows", accounts => {
 				})
 
 				it('should release just jobOfferOnTop on `cancelJob` on OFFER_ACCEPTED job stage', async () => {
-					await contracts.jobController.cancelJob(jobId, { from: client, })
+					workerBalanceBefore = await helpers.getEthBalance(worker)
+					clientBalanceBefore = await helpers.getEthBalance(client)
+
+					const tx = await contracts.jobController.cancelJob(jobId, { from: client, })
+					clientBalanceBefore = clientBalanceBefore.sub(await helpers.getTxExpences(tx.tx))
+
 					assert.equal(
-						(await contracts.paymentGateway.getBalance(client)).toString(),
-						clientBalanceBefore.plus(payment.minus(workerOnTop)).toString()
+						(await helpers.getEthBalance(client)).toString(16),
+						clientBalanceBefore.plus(payment.minus(workerOnTop)).toString(16)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance(worker)).toString(),
-						workerBalanceBefore.plus(workerOnTop).toString()
+						(await helpers.getEthBalance(worker)).toString(16),
+						workerBalanceBefore.plus(workerOnTop).toString(16)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance(jobId)).toString(),
+						(await contracts.paymentGateway.getBalance(jobId)).toString(16),
 						'0'
 					)
 				})
 			})
 
-			describe("when releasing payment", () => {
+			describe.only("when releasing payment", () => {
 				var payment
 
 				beforeEach(async () => {
-					clientBalanceBefore = await contracts.paymentGateway.getBalance(client)
-					workerBalanceBefore = await contracts.paymentGateway.getBalance(worker)
-
 					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 					await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
 
@@ -1394,47 +1404,66 @@ contract("JobController workflows", accounts => {
 					)
 				})
 
-				it('should release jobOfferOnTop + 1 hour of work on `cancelJob` on PENDING_STARTED job stage', async () => {
+				describe("on `cancelJob` at PENDING_STARTED job stage", () => {
 					const jobPaymentEstimate = workerRate * 60 + workerOnTop;
 
-					await contracts.jobController.startWork(jobId, { from: worker, })
-					await contracts.jobController.cancelJob(jobId, {from: client})
+					beforeEach(async () => {
+						await contracts.jobController.startWork(jobId, { from: worker, })
 
-					assert.equal(
-						(await contracts.paymentGateway.getBalance(client)).toString(),
-						clientBalanceBefore.plus(payment.minus(jobPaymentEstimate)).toString()
-					)
-					assert.equal(
-						(await contracts.paymentGateway.getBalance(worker)).toString(),
-						workerBalanceBefore.add(jobPaymentEstimate).toString()
-					)
-					assert.equal(
-						(await contracts.paymentGateway.getBalance(jobId)).toString(),
-						'0'
-					)
+						workerBalanceBefore = await helpers.getEthBalance(worker)
+						clientBalanceBefore = await helpers.getEthBalance(client)
+						
+						const tx = await contracts.jobController.cancelJob(jobId, {from: client})
+						
+						clientBalanceBefore = clientBalanceBefore.sub(await helpers.getTxExpences(tx.tx))
+					})
+
+					it('should release jobOfferOnTop + 1 hour of work on ', async () => {
+						assert.equal(
+							(await helpers.getEthBalance(client)).toString(16),
+							clientBalanceBefore.plus(payment.minus(jobPaymentEstimate)).toString(16)
+						)
+						assert.equal(
+							(await helpers.getEthBalance(worker)).toString(16),
+							workerBalanceBefore.add(jobPaymentEstimate).toString(16)
+						)
+						assert.equal(
+							(await contracts.paymentGateway.getBalance(jobId)).toString(16),
+							'0'
+						)
+					})
 				})
 
-				it('should release jobOfferOnTop + 1 hour of work on `cancelJob` on STARTED job stage', async () => {
+				describe("on `cancelJob` at STARTED job stage'", () => {
 					const jobPaymentEstimate = workerRate * 60 + workerOnTop;
 
-					await contracts.jobController.startWork(jobId, { from: worker, })
-					await contracts.jobController.confirmStartWork(jobId, { from: client, })
-					await contracts.jobController.cancelJob(jobId, {from: client})
+					beforeEach(async () => {
+						await contracts.jobController.startWork(jobId, { from: worker, })
+						await contracts.jobController.confirmStartWork(jobId, { from: client, })
+						
+						workerBalanceBefore = await helpers.getEthBalance(worker)
+						clientBalanceBefore = await helpers.getEthBalance(client)
+						
+						const tx = await contracts.jobController.cancelJob(jobId, {from: client})
+						
+						clientBalanceBefore = clientBalanceBefore.sub(await helpers.getTxExpences(tx.tx))
+					})
 
-					assert.equal(
-						(await contracts.paymentGateway.getBalance(client)).toString(),
-						clientBalanceBefore.plus(payment.minus(jobPaymentEstimate)).toString()
-					)
-					assert.equal(
-						(await contracts.paymentGateway.getBalance(worker)).toString(),
-						workerBalanceBefore.add(jobPaymentEstimate).toString()
-					)
-					assert.equal(
-						(await contracts.paymentGateway.getBalance(jobId)).toString(),
-						'0'
-					)
+					it('should release jobOfferOnTop + 1 hour of work', async () => {
+						assert.equal(
+							(await helpers.getEthBalance(client)).toString(16),
+							clientBalanceBefore.plus(payment.minus(jobPaymentEstimate)).toString(16)
+						)
+						assert.equal(
+							(await helpers.getEthBalance(worker)).toString(16),
+							workerBalanceBefore.add(jobPaymentEstimate).toString(16)
+						)
+						assert.equal(
+							(await contracts.paymentGateway.getBalance(jobId)).toString(16),
+							'0'
+						)
+					})
 				})
-
 			})
 
 			describe('when releasing payment after work is done', () => {
@@ -2004,9 +2033,6 @@ contract("JobController workflows", accounts => {
 			describe("when accepting work after finish", () => {
 
 				before(async () => {
-					clientBalanceBefore = await contracts.paymentGateway.getBalance(client)
-					workerBalanceBefore = await contracts.paymentGateway.getBalance(worker)
-
 					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 					await contracts.jobController.postJobOfferWithPrice(jobId, workerRate, { from: worker, })
 					payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
@@ -2015,6 +2041,9 @@ contract("JobController workflows", accounts => {
 					await timeOps()
 					await contracts.jobController.endWork(jobId, { from: worker, })
 					await contracts.jobController.acceptWorkResults(jobId, { from: client, })
+
+					clientBalanceBefore = await helpers.getEthBalance(client)
+					workerBalanceBefore = await helpers.getEthBalance(worker)
 				})
 
 				after(async () => await reverter.revert())
@@ -2042,15 +2071,15 @@ contract("JobController workflows", accounts => {
 				it("should release the fixed amount even after long period of time", async () => {
 					await contracts.jobController.releasePayment(jobId)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(client)).toString(),
-						clientBalanceBefore.toString()
+						(await helpers.getEthBalance(client)).toString(16),
+						clientBalanceBefore.toString(16)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(worker)).toString(),
-						workerBalanceBefore.plus(workerRate).toString()
+						(await helpers.getEthBalance(worker)).toString(16),
+						workerBalanceBefore.plus(workerRate).toString(16)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(jobId)).toString(),
+						(await contracts.paymentGateway.getBalance.call(jobId)).toString(16),
 						'0'
 					)
 				})
@@ -2059,9 +2088,6 @@ contract("JobController workflows", accounts => {
 			describe("when rejecting work after finish", () => {
 
 				before(async () => {
-					clientBalanceBefore = await contracts.paymentGateway.getBalance(client)
-					workerBalanceBefore = await contracts.paymentGateway.getBalance(worker)
-
 					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 					await contracts.jobController.postJobOfferWithPrice(jobId, workerRate, { from: worker, })
 					payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
@@ -2069,6 +2095,9 @@ contract("JobController workflows", accounts => {
 					await contracts.jobController.startWork(jobId, { from: worker, })
 					await timeOps()
 					await contracts.jobController.endWork(jobId, { from: worker, })
+
+					clientBalanceBefore = await helpers.getEthBalance(client)
+					workerBalanceBefore = await helpers.getEthBalance(worker)
 				})
 
 				after(async () => await reverter.revert())
@@ -2096,9 +2125,6 @@ contract("JobController workflows", accounts => {
 			describe("when rejecting work and resolving by referee", () => {
 
 				beforeEach(async () => {
-					clientBalanceBefore = await contracts.paymentGateway.getBalance(client)
-					workerBalanceBefore = await contracts.paymentGateway.getBalance(worker)
-
 					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 					await contracts.jobController.postJobOfferWithPrice(jobId, workerRate, { from: worker, })
 					payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
@@ -2107,6 +2133,9 @@ contract("JobController workflows", accounts => {
 					await timeOps()
 					await contracts.jobController.endWork(jobId, { from: worker, })
 					await contracts.jobController.rejectWorkResults(jobId, { from: client, })
+
+					clientBalanceBefore = await helpers.getEthBalance(client)
+					workerBalanceBefore = await helpers.getEthBalance(worker)
 				})
 
 				afterEach(async () => await reverter.revert())
@@ -2134,15 +2163,15 @@ contract("JobController workflows", accounts => {
 				it("should be able to resolve rejected case in client's favor", async () => {
 					await contracts.jobController.resolveWorkDispute(jobId, 0, 0)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(client)).toString(),
-						clientBalanceBefore.plus(workerRate).toString()
+						(await helpers.getEthBalance(client)).toString(16),
+						clientBalanceBefore.plus(workerRate).toString(16)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(worker)).toString(),
-						workerBalanceBefore.toString()
+						(await helpers.getEthBalance(worker)).toString(16),
+						workerBalanceBefore.toString(16)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(jobId)).toString(),
+						(await contracts.paymentGateway.getBalance.call(jobId)).toString(16),
 						'0'
 					)
 				})
@@ -2150,15 +2179,15 @@ contract("JobController workflows", accounts => {
 				it("should be able to resolve rejected case in worker's favor", async () => {
 					await contracts.jobController.resolveWorkDispute(jobId, workerRate, 0)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(client)).toString(),
-						clientBalanceBefore.toString()
+						(await helpers.getEthBalance(client)).toString(16),
+						clientBalanceBefore.toString(16)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(worker)).toString(),
-						workerBalanceBefore.plus(workerRate).toString()
+						(await helpers.getEthBalance(worker)).toString(16),
+						workerBalanceBefore.plus(workerRate).toString(16)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(jobId)).toString(),
+						(await contracts.paymentGateway.getBalance.call(jobId)).toString(16),
 						'0'
 					)
 				})
@@ -2166,15 +2195,15 @@ contract("JobController workflows", accounts => {
 				it("should be able to resolve rejected case in 50/50", async () => {
 					await contracts.jobController.resolveWorkDispute(jobId, workerRate / 2, 0)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(client)).toString(),
-						clientBalanceBefore.plus(workerRate - workerRate / 2).toString()
+						(await helpers.getEthBalance(client)).toString(16),
+						clientBalanceBefore.plus(workerRate - workerRate / 2).toString(16)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(worker)).toString(),
-						workerBalanceBefore.plus(workerRate / 2).toString()
+						(await helpers.getEthBalance(worker)).toString(16),
+						workerBalanceBefore.plus(workerRate / 2).toString(16)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(jobId)).toString(),
+						(await contracts.paymentGateway.getBalance.call(jobId)).toString(16),
 						'0'
 					)
 				})
@@ -2184,8 +2213,8 @@ contract("JobController workflows", accounts => {
 						contracts.jobController.resolveWorkDispute(jobId, workerRate + 1, 0)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(jobId)).toString(),
-						workerRate
+						(await contracts.paymentGateway.getBalance.call(jobId)).toString(16),
+						workerRate.toString(16)
 					)
 				})
 
@@ -2194,15 +2223,15 @@ contract("JobController workflows", accounts => {
 					const workerPart = workerRate - penaltyFee
 					await contracts.jobController.resolveWorkDispute(jobId, workerRate - penaltyFee, penaltyFee + 1)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(client)).toString(),
-						clientBalanceBefore.plus(workerRate - workerPart).toString()
+						(await helpers.getEthBalance(client)).toString(16),
+						clientBalanceBefore.plus(workerRate - workerPart).toString(16)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(worker)).toString(),
-						workerBalanceBefore.plus(workerPart).toString()
+						(await helpers.getEthBalance(worker)).toString(16),
+						workerBalanceBefore.plus(workerPart).toString(16)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(jobId)).toString(),
+						(await contracts.paymentGateway.getBalance.call(jobId)).toString(16),
 						'0'
 					)
 				})
@@ -2217,8 +2246,8 @@ contract("JobController workflows", accounts => {
 						contracts.jobController.resolveWorkDispute(jobId, workerRate - penaltyFee, penaltyFee + 1)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(jobId)).toString(),
-						workerRate
+						(await contracts.paymentGateway.getBalance.call(jobId)).toString(16),
+						workerRate.toString(16)
 					)
 				})
 
@@ -2231,19 +2260,19 @@ contract("JobController workflows", accounts => {
 					const workerPart = workerRate - penaltyFee
 					await contracts.jobController.resolveWorkDispute(jobId, workerPart, penaltyFee)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(client)).toString(),
-						clientBalanceBefore.toString()
+						(await helpers.getEthBalance(client)).toString(16),
+						clientBalanceBefore.toString(16)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(worker)).toString(),
-						workerBalanceBefore.plus(workerPart).toString()
+						(await helpers.getEthBalance(worker)).toString(16),
+						workerBalanceBefore.plus(workerPart).toString(16)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(feeAddress)).toString(),
-						penaltyFee.toString()
+						(await contracts.paymentGateway.getBalance.call(feeAddress)).toString(16),
+						penaltyFee.toString(16)
 					)
 					assert.equal(
-						(await contracts.paymentGateway.getBalance.call(jobId)).toString(),
+						(await contracts.paymentGateway.getBalance.call(jobId)).toString(16),
 						'0'
 					)
 				})
