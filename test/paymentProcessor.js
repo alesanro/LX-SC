@@ -109,7 +109,7 @@ contract('PaymentProcessor', function(accounts) {
       .then(assertExpectations());
   });
 
-  it('should call transferAll on releasePayment', () => {
+  it('should NOT call transferAll on releasePayment', () => {
     const receiver = accounts[1];
     const change = accounts[2];
     const value = '0xffff';
@@ -123,7 +123,31 @@ contract('PaymentProcessor', function(accounts) {
         paymentProcessor.address, 
         0, 
         paymentGateway.transferAll.getData(
-          addressOperationId, receiver, value, change, feeFromValue, additionalFee),
+          addressOperationId, receiver, value, change, feeFromValue, additionalFee
+        ),
+        1
+      ))
+      .then(() => paymentProcessor.releasePayment(
+        operationId, receiver, value, change, feeFromValue, additionalFee, 
+        { from: jobControllerAddress, }))
+      .then(assertExpectations(1, 1));
+  });
+
+  it('should call transferAllAndWithdraw on releasePayment', () => {
+    const receiver = accounts[1];
+    const change = accounts[2];
+    const value = '0xffff';
+    const feeFromValue = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0000';
+    const additionalFee = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000';
+    const operationId = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00';
+    const addressOperationId = '0xffffffffffffffffffffffffffffffffffffff00';
+
+    return Promise.resolve()
+      .then(() => mock.expect(
+        paymentProcessor.address, 
+        0, 
+        paymentGateway.transferAllAndWithdraw.getData(
+          addressOperationId, receiver, value, change, feeFromValue, additionalFee, true),
           1
         )
       )
@@ -206,7 +230,7 @@ contract('PaymentProcessor', function(accounts) {
       .then(code => assert.equal(code.toNumber(), ErrorsNamespace.OK))
   });
 
-  it('should return transferAll fail on releasePayment', async () => {
+  it('should return transferAllAndWithdraw fail on releasePayment', async () => {
     const receiver = accounts[1];
     const change = accounts[2];
     const value = '0xffff';
@@ -220,8 +244,8 @@ contract('PaymentProcessor', function(accounts) {
       .then(() => mock.expect(
         paymentProcessor.address, 
         0, 
-        paymentGateway.transferAll.getData(
-          addressOperationId, receiver, value, change, feeFromValue, additionalFee
+        paymentGateway.transferAllAndWithdraw.getData(
+          addressOperationId, receiver, value, change, feeFromValue, additionalFee, true
         ), 
         result
       ))
@@ -232,7 +256,7 @@ contract('PaymentProcessor', function(accounts) {
       .then(code => assert.equal(code.toNumber(), ErrorsNamespace.UNAUTHORIZED))
   });
 
-  it('should return transferAll success on releasePayment', async () => {
+  it('should return transferAllAndWithdraw success on releasePayment', async () => {
     const receiver = accounts[1];
     const change = accounts[2];
     const value = '0xffff';
@@ -246,8 +270,8 @@ contract('PaymentProcessor', function(accounts) {
       .then(() => mock.expect(
         paymentProcessor.address, 
         0, 
-        paymentGateway.transferAll.getData(
-          addressOperationId, receiver, value, change, feeFromValue, additionalFee
+        paymentGateway.transferAllAndWithdraw.getData(
+          addressOperationId, receiver, value, change, feeFromValue, additionalFee, true
         ), 
         result
       ))
@@ -314,7 +338,7 @@ contract('PaymentProcessor', function(accounts) {
       .then(asserts.isFalse);
   });
 
-  it('should NOT call transferAll on releasePayment if serviceMode is enabled', () => {
+  it('should NOT call transferAllAndWithdraw on releasePayment if serviceMode is enabled', () => {
     const receiver = accounts[1];
     const change = accounts[2];
     const value = '0xffff';
@@ -331,7 +355,7 @@ contract('PaymentProcessor', function(accounts) {
       .then(assertExpectations());
   });
 
-  it('should call transferAll on releasePayment if serviceMode is enabled and operation is approved', () => {
+  it('should call transferAllAndWithdraw on releasePayment if serviceMode is enabled and operation is approved', () => {
     const receiver = accounts[1];
     const change = accounts[2];
     const value = '0xffff';
@@ -346,8 +370,8 @@ contract('PaymentProcessor', function(accounts) {
       .then(() => mock.expect(
         paymentProcessor.address, 
         0, 
-        paymentGateway.transferAll.getData(
-          addressOperationId, receiver, value, change, feeFromValue, additionalFee,
+        paymentGateway.transferAllAndWithdraw.getData(
+          addressOperationId, receiver, value, change, feeFromValue, additionalFee, true
         ), 
         1
       ))
@@ -382,7 +406,7 @@ contract('PaymentProcessor', function(accounts) {
       .then(assertExpectations());
   });
 
-  it('should call transferAll on releasePayment if serviceMode is disabled', () => {
+  it('should call transferAllAndWithdraw on releasePayment if serviceMode is disabled', () => {
     const receiver = accounts[1];
     const change = accounts[2];
     const value = '0xffff';
@@ -397,8 +421,8 @@ contract('PaymentProcessor', function(accounts) {
       .then(() => mock.expect(
         paymentProcessor.address, 
         0, 
-        paymentGateway.transferAll.getData(
-          addressOperationId, receiver, value, change, feeFromValue, additionalFee,
+        paymentGateway.transferAllAndWithdraw.getData(
+          addressOperationId, receiver, value, change, feeFromValue, additionalFee, true
         ), 
         1
       ))

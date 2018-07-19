@@ -9,9 +9,37 @@ pragma solidity ^0.4.18;
 import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
 
 
-contract PaymentGatewayInterface {
-    function transferWithFee(address _from, address _to, uint _feeFromValue, uint _additionalFee) public payable returns (uint);
-    function transferAll(address _from, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee) public returns (uint);
+interface PaymentGatewayInterface {
+    function transferWithFee(
+        address _from, 
+        address _to, 
+        uint _feeFromValue, 
+        uint _additionalFee
+        ) 
+        external 
+        payable 
+        returns (uint);
+    function transferAll(
+        address _from, 
+        address _to, 
+        uint _value, 
+        address _change, 
+        uint _feeFromValue, 
+        uint _additionalFee
+        ) 
+        external 
+        returns (uint);
+    function transferAllAndWithdraw(
+        address _from, 
+        address _to, 
+        uint _value, 
+        address _change, 
+        uint _feeFromValue, 
+        uint _additionalFee,
+        bool _shouldWithdraw
+        ) 
+        external 
+        returns (uint);
 }
 
 
@@ -91,13 +119,14 @@ contract PaymentProcessor is Roles2LibraryAdapter {
     onlyApproved(_operationId)
     external
     returns (uint) {
-        return paymentGateway.transferAll(
-                address(_operationId),
-                _to,
-                _value,
-                _change,
-                _feeFromValue,
-                _additionalFee
-            );
+        return paymentGateway.transferAllAndWithdraw(
+            address(_operationId),
+            _to,
+            _value,
+            _change,
+            _feeFromValue,
+            _additionalFee,
+            true
+        );
     }
 }

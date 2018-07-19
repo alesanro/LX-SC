@@ -392,8 +392,6 @@ contract('Integration tests (user stories)', (accounts) => {
                 job = jobs[0]
                 await setupWorker(job, users.worker)
 
-                initialWorkerBalance = (await contracts.paymentGateway.getBalance.call(users.worker)).toNumber()
-
                 await contracts.jobController.postJobOffer(job.id, 100, 100, 100, { from: users.worker })
 
                 const payment = await contracts.jobController.calculateLockAmountFor(users.worker, job.id)
@@ -416,6 +414,8 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("should be possibe to cancel job", async () => {
+                initialWorkerBalance = await helpers.getEthBalance(users.worker)
+
                 const tx = await contracts.jobController.cancelJob(job.id, { from: users.client })
                 const jobCancelledEvent = (await eventsHelper.findEvent([contracts.jobController,], tx, "JobCanceled"))[0]
                 assert.isDefined(jobCancelledEvent)
@@ -427,8 +427,8 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("should have increased worker's balance after the payment", async () => {
-                const afterPaymentWorkerBalance = (await contracts.paymentGateway.getBalance.call(users.worker)).toNumber()
-                assert.isBelow(initialWorkerBalance, afterPaymentWorkerBalance)
+                const afterPaymentWorkerBalance = await helpers.getEthBalance(users.worker)
+                assert.isTrue(afterPaymentWorkerBalance.gt(initialWorkerBalance))
             })
         })
 
@@ -458,7 +458,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await reverter.revert()
             })
 
-            let afterPaymentWorkerBalance
+            let afterPaymentWorkerEthPayment
 
             it("worker without increasing time should receive his payment after finishing work", async () => {
                 await contracts.jobController.postJobOffer(job.id, 100, 100, 100, { from: users.worker })
@@ -470,10 +470,12 @@ contract('Integration tests (user stories)', (accounts) => {
                 await contracts.jobController.endWork(job.id, { from: users.worker })
                 await contracts.jobController.confirmEndWork(job.id, { from: users.client })
 
+                const workerEthBalance = await helpers.getEthBalance(users.worker)
+
                 await contracts.jobController.releasePayment(job.id, { from: users.default })
 
-                afterPaymentWorkerBalance = (await contracts.paymentGateway.getBalance.call(users.worker)).toNumber()
-                assert.notEqual(afterPaymentWorkerBalance, 0)
+                afterPaymentWorkerEthPayment = (await helpers.getEthBalance(users.worker)).sub(workerEthBalance)
+                assert.notEqual(afterPaymentWorkerEthPayment.toString(16), '0')
             })
 
             it("the other worker should be able to apply for a job", async () => {
@@ -521,17 +523,18 @@ contract('Integration tests (user stories)', (accounts) => {
                 assert.equal(jobState, JobState.FINISHED)
             })
 
-            let afterPaymentWorker2Balance
+            let afterPaymentWorker2EthPayment
 
             it("the other worker should be able to receive a payment for his work", async () => {
+                const workerEthBalance = await helpers.getEthBalance(users.worker2)
                 await contracts.jobController.releasePayment(otherJob.id, { from: users.default })
 
-                afterPaymentWorker2Balance = (await contracts.paymentGateway.getBalance.call(users.worker2)).toNumber()
-                assert.notEqual(afterPaymentWorker2Balance, 0)
+                afterPaymentWorker2EthPayment = (await helpers.getEthBalance(users.worker2)).sub(workerEthBalance)
+                assert.notEqual(afterPaymentWorker2EthPayment.toString(16), '0')
             })
 
             it("the second worker should receive more payment than the first despite working the same hours", async () => {
-                assert.isAbove(afterPaymentWorker2Balance, afterPaymentWorkerBalance)
+                assert.isTrue(afterPaymentWorker2EthPayment.gt(afterPaymentWorkerEthPayment))
             })
         })
 
@@ -706,8 +709,6 @@ contract('Integration tests (user stories)', (accounts) => {
 
                 await setupWorker(job, users.worker)
 
-                initialWorkerBalance = await contracts.paymentGateway.getBalance.call(users.worker)
-
                 await contracts.jobController.postJobOffer(job.id, 200, 200, 100, { from: users.worker })
                 const payment = await contracts.jobController.calculateLockAmountFor(users.worker, job.id)
                 await contracts.jobController.acceptOffer(job.id, users.worker, { from: users.client, value: payment})
@@ -759,15 +760,12 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("should receive payment for the work", async () => {
+                initialWorkerBalance = await helpers.getEthBalance(users.worker)
+
                 await contracts.jobController.releasePayment(job.id, { from: users.default })
 
-                const afterPaymentWorkerBalance = await contracts.paymentGateway.getBalance.call(users.worker)
-                assert.notEqual(afterPaymentWorkerBalance.toString(16), initialWorkerBalance.toString(16))
-
-                //TODO: @ahiatsevich see unimplemented test below
-                //const initialEthBalance = web3.eth.getBalance(users.worker);
-                //await contracts.paymentGateway.withdraw(afterPaymentWorkerBalance, {from: users.worker});
-                //assert.isAbove(web3.eth.getBalance(users.worker), initialEthBalance)
+                const afterPaymentWorkerBalance = await helpers.getEthBalance(users.worker)
+                assert.isTrue(afterPaymentWorkerBalance.gt(initialWorkerBalance))
             })
 
             it("should be able withdraw payment for the work")
@@ -933,8 +931,6 @@ contract('Integration tests (user stories)', (accounts) => {
 
                 await setupWorker(job, users.worker)
 
-                initialWorkerBalance = (await contracts.paymentGateway.getBalance.call(users.worker)).toNumber()
-
                 const postJobOfferTx = await contracts.jobController.postJobOffer(job.id, 200, 200, 100, { from: users.worker })
                 const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], postJobOfferTx, 'JobOfferPosted'))[0]
                 assert.isDefined(postJobOfferEvent)
@@ -948,8 +944,6 @@ contract('Integration tests (user stories)', (accounts) => {
 
                 otherJob = jobs[2]
                 await setupWorker(otherJob, users.worker2)
-
-                initialWorker2Balance = await contracts.paymentGateway.getBalance.call(users.worker2)
             })
 
             after(async () => {
@@ -992,11 +986,18 @@ contract('Integration tests (user stories)', (accounts) => {
             it("should be able to finish work", async () => {
                 await contracts.jobController.endWork(job.id, { from: users.worker })
                 await contracts.jobController.confirmEndWork(job.id, { from: users.client })
+
+                initialWorkerBalance = await helpers.getEthBalance(users.worker)
                 await contracts.jobController.releasePayment(job.id, { from: users.default })
             })
 
+            let totalPaidSumWorker
+
             it("worker should receive his payment check", async () => {
-                assert.isAbove((await contracts.paymentGateway.getBalance.call(users.worker)).toNumber(), initialWorkerBalance)
+                const currentBalance = await helpers.getEthBalance(users.worker)
+                assert.isTrue(currentBalance.gt(initialWorkerBalance))
+
+                totalPaidSumWorker = currentBalance.sub(initialWorkerBalance)
             })
 
             it("other worker should be able to perform his work during the same period but without pauses", async () => {
@@ -1008,16 +1009,18 @@ contract('Integration tests (user stories)', (accounts) => {
                 await helpers.increaseTime(4*(8*60*60)) // 4 working day
                 await contracts.jobController.endWork(otherJob.id, { from: users.worker2 })
                 await contracts.jobController.confirmEndWork(otherJob.id, { from: users.client })
+
+                initialWorker2Balance = await helpers.getEthBalance(users.worker2)
+
                 await contracts.jobController.releasePayment(otherJob.id, { from: users.default })
 
                 assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), JobState.FINALIZED)
             })
 
             it("other worker should have the same reward as the first worker", async () => {
-                let workerReward = (await contracts.paymentGateway.getBalance.call(users.worker)).toNumber() - initialWorkerBalance
-                let otherWorkerReward = (await contracts.paymentGateway.getBalance.call(users.worker2)).toNumber() - initialWorker2Balance
+                const totalPaidSumWorker2 = (await helpers.getEthBalance(users.worker2)).sub(initialWorker2Balance)
 
-                assert.equal(otherWorkerReward, workerReward)
+                assert.equal(totalPaidSumWorker2.toString(16), totalPaidSumWorker.toString(16))
             })
         })
 

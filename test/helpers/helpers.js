@@ -18,7 +18,7 @@ Array.prototype.removeZeros = function() {
 }
 
 
-module.exports = {
+const helpers = {
   getSig: (callData) => web3.sha3(callData).slice(0, 10),
   increaseTime: (time) => {
     return new Promise((resolve, reject) => {
@@ -106,5 +106,25 @@ module.exports = {
   assertJump: (error) => {
     assert.isAbove(error.message.search('invalid opcode'), -1, 'Invalid opcode error must be returned');
   },
-
 }
+
+helpers.getEthBalance = acc => new Promise((resolve, reject) => {
+  web3.eth.getBalance(acc, (e, b) => (e === undefined || e === null) ? resolve(web3.toBigNumber(b)): reject(e))
+})
+
+helpers.getTx = hash => new Promise((resolve, reject) => {
+  web3.eth.getTransaction(hash, (e, tx) => (e === undefined || e === null) ? resolve(tx) : reject(e))
+})
+
+helpers.getTxReceipt = hash => new Promise((resolve, reject) => {
+  web3.eth.getTransactionReceipt(hash, (e, tx) => (e === undefined || e === null) ? resolve(tx) : reject(e))
+})
+
+helpers.getTxExpences = async hash => {
+  const fullTx = await helpers.getTx(hash)
+  const receiptTx = await helpers.getTxReceipt(hash)
+
+  return web3.toBigNumber(fullTx.gasPrice).mul(web3.toBigNumber(receiptTx.gasUsed))
+}
+
+module.exports = helpers

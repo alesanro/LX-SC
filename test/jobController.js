@@ -74,31 +74,19 @@ contract('JobController', function(accounts) {
   const jobDefaultPaySize = 90;
   const jobFlow = web3.toBigNumber(2).pow(255).add(1) /// WORKFLOW_TM + CONFIRMATION flag
 
-  const getEthBalance = acc => new Promise((resolve, reject) => {
-    web3.eth.getBalance(acc, (e, b) => (e === undefined || e === null) ? resolve(b): reject(e))
-  })
-
-  const getTx = hash => new Promise((resolve, reject) => {
-		web3.eth.getTransaction(hash, (e, tx) => (e === undefined || e === null) ? resolve(tx) : reject(e))
-	})
-
-	const getTxReceipt = hash => new Promise((resolve, reject) => {
-		web3.eth.getTransactionReceipt(hash, (e, tx) => (e === undefined || e === null) ? resolve(tx) : reject(e))
-	})
-
-	const getTxExpences = async hash => {
-		const fullTx = await getTx(hash)
-		const receiptTx = await getTxReceipt(hash)
-
-		return web3.toBigNumber(fullTx.gasPrice).mul(web3.toBigNumber(receiptTx.gasUsed))
-	}
-
   const assertInternalBalance = (address, expectedValue) => {
     return (actualValue) => {
       return paymentGateway.getBalance(address)
       .then(asserts.equal(expectedValue));
     };
   };
+
+  const assertEthBalance = async (account, expectedValue) => {
+    assert.equal(
+      (await helpers.getEthBalance(account)).toString(),
+      expectedValue.toString()
+    )
+  }
 
   const assertExpectations = (expected = 0, callsCount = null) => {
     let expectationsCount;
@@ -187,10 +175,8 @@ contract('JobController', function(accounts) {
       .then(result => assert.equal(result.toNumber(), stages.FINALIZED));
   }
 
-  const onReleasePayment = ({ timeSpent, jobPaymentEstimate, pauses = false, offer = defaultWorkerOffer, beforeEndWorkHook, }) => {
+  const onReleasePayment = async ({ timeSpent, jobPaymentEstimate, pauses = false, offer = defaultWorkerOffer, beforeEndWorkHook, }) => {
     const jobId = 1;
-    let clientBalanceBefore;
-    let workerBalanceBefore;
 
     const timeOps = () => {
       if (pauses) {
@@ -210,33 +196,40 @@ contract('JobController', function(accounts) {
       }
     }
 
-    return Promise.resolve()
-      .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
-      .then(() => jobController.postJobOffer(
-        jobId, offer.workerRate, offer.jobEstimate, offer.workerOnTop, {from: worker}
-      ))
-      .then(async () => {
-        const payment = await jobController.calculateLockAmountFor(worker, jobId)
-        return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
-      })
-      .then(() => paymentGateway.getBalance(client))
-      .then(result => clientBalanceBefore = result)
-      .then(() => paymentGateway.getBalance(worker))
-      .then(result => workerBalanceBefore = result)
-      .then(() => jobController.startWork(jobId, {from: worker}))
-      .then(() => jobController.confirmStartWork(jobId, {from: client}))
-      .then(() => timeOps())
-      .then(async () => {
-        if (beforeEndWorkHook !== undefined) {
-          await beforeEndWorkHook(jobId)
-        }
-      })
-      .then(() => jobController.endWork(jobId, {from: worker}))
-      .then(() => jobController.confirmEndWork(jobId, {from: client}))
-      .then(() => jobController.releasePayment(jobId))
-      .then(() => assertInternalBalance(client, clientBalanceBefore.sub(jobPaymentEstimate)))
-      .then(() => assertInternalBalance(worker, workerBalanceBefore.add(jobPaymentEstimate)))
-      .then(() => assertInternalBalance(jobId, 0));
+    await jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client})
+    await jobController.postJobOffer(
+      jobId, offer.workerRate, offer.jobEstimate, offer.workerOnTop, {from: worker}
+    )
+    const payment = await jobController.calculateLockAmountFor(worker, jobId)
+    await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
+
+    const clientBalanceBefore = await paymentGateway.getBalance(client)
+    const workerBalanceBefore = await paymentGateway.getBalance(worker)
+
+    await jobController.startWork(jobId, {from: worker})
+    await jobController.confirmStartWork(jobId, {from: client})
+
+    await timeOps()
+    
+    var morePayments = 0
+    if (beforeEndWorkHook !== undefined) {
+      morePayments = await beforeEndWorkHook(jobId)
+      morePayments = morePayments || 0
+    }
+
+    await jobController.endWork(jobId, {from: worker})
+    await jobController.confirmEndWork(jobId, {from: client})
+
+    const workerEthBalanceBefore = await helpers.getEthBalance(worker)
+    const clientEthBalanceBefore = await helpers.getEthBalance(client)
+
+    await jobController.releasePayment(jobId)
+
+    await (assertInternalBalance(client, clientBalanceBefore)())
+    await (assertInternalBalance(worker, workerBalanceBefore)())
+    await assertEthBalance(worker, workerEthBalanceBefore.add(jobPaymentEstimate))
+    await assertEthBalance(client, clientEthBalanceBefore.add((payment.add(morePayments)).sub(jobPaymentEstimate)))
+    await (assertInternalBalance(jobId, 0)())
   }
 
   before('setup', () => {
@@ -662,11 +655,11 @@ contract('JobController', function(accounts) {
       )
       {
         const caller = worker 
-        const beforeCallerBalance = await getEthBalance(caller)
+        const beforeCallerBalance = await helpers.getEthBalance(caller)
         const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
         const tx = await jobController.acceptOffer(jobId, worker, { from: caller, value: payment, })
-        const txExpenses = await getTxExpences(tx.tx)
-        const afterCallerBalance = await getEthBalance(caller)
+        const txExpenses = await helpers.getTxExpences(tx.tx)
+        const afterCallerBalance = await helpers.getEthBalance(caller)
         assert.equal(beforeCallerBalance.sub(txExpenses).toString(16), afterCallerBalance.toString(16))
       }
     });
@@ -1309,7 +1302,7 @@ contract('JobController', function(accounts) {
   });
 
 
-  describe('Reward release', () => {
+  describe.only('Reward release', () => {
 
     it("should NOT allow to cancel job if operation " +
        "was not allowed by Payment Processor", () => {
@@ -1341,14 +1334,7 @@ contract('JobController', function(accounts) {
       const workerOnTop = 1000000000;
       const jobEstimate = 240;
 
-      let clientBalanceBefore;
-      let workerBalanceBefore;
-
       return Promise.resolve()
-        .then(() => paymentGateway.getBalance(client))
-        .then(result => clientBalanceBefore = result)
-        .then(() => paymentGateway.getBalance(worker))
-        .then(result => workerBalanceBefore = result)
         .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
@@ -1363,10 +1349,6 @@ contract('JobController', function(accounts) {
         .then(() => paymentProcessor.approve(jobId))
         .then(() => jobController.cancelJob.call(jobId, {from: client}))
         .then((code) => assert.equal(code, ErrorsNamespace.OK))
-        .then(() => paymentGateway.getBalance(client))
-        .then(result => assert.equal(result.toString(), clientBalanceBefore.toString()))
-        .then(() => paymentGateway.getBalance(worker))
-        .then(result => assert.equal(result.toString(), workerBalanceBefore.toString()))
     });
 
     it("should NOT allow to release payment when operation was not allowed by Payment Processor", () => {
@@ -1436,10 +1418,6 @@ contract('JobController', function(accounts) {
       let payment
 
       return Promise.resolve()
-        .then(() => paymentGateway.getBalance(client))
-        .then(result => clientBalanceBefore = result)
-        .then(() => paymentGateway.getBalance(worker))
-        .then(result => workerBalanceBefore = result)
         .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
@@ -1448,13 +1426,18 @@ contract('JobController', function(accounts) {
           payment = await jobController.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
+        .then(() => helpers.getEthBalance(client))
+        .then(result => clientBalanceBefore = result)
+        .then(() => helpers.getEthBalance(worker))
+        .then(result => workerBalanceBefore = result)
         .then(() => jobController.cancelJob(jobId, {from: client}))
-        .then(() => paymentGateway.getBalance(client))
-        .then(result => assert.equal(result.toString(), clientBalanceBefore.plus(payment.minus(workerOnTop)).toString()))
-        .then(() => paymentGateway.getBalance(worker))
-        .then(result => assert.equal(result.toString(), workerBalanceBefore.add(workerOnTop).toString()))
+        .then(async tx => clientBalanceBefore = clientBalanceBefore.sub(await helpers.getTxExpences(tx.tx)))
+        .then(() => helpers.getEthBalance(client))
+        .then(result => assert.equal(result.toString(16), clientBalanceBefore.plus(payment.minus(workerOnTop)).toString(16)))
+        .then(() => helpers.getEthBalance(worker))
+        .then(result => assert.equal(result.toString(16), workerBalanceBefore.add(workerOnTop).toString(16)))
         .then(() => paymentGateway.getBalance(jobId))
-        .then(result => assert.equal(result.toString(), '0'));
+        .then(result => assert.equal(result.toString(16), '0'));
     });
 
     it('should release just jobOfferOnTop on `cancelJob` on PENDING_START job stage', () => {
@@ -1469,10 +1452,6 @@ contract('JobController', function(accounts) {
       let payment
 
       return Promise.resolve()
-        .then(() => paymentGateway.getBalance(client))
-        .then(result => clientBalanceBefore = result)
-        .then(() => paymentGateway.getBalance(worker))
-        .then(result => workerBalanceBefore = result)
         .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
@@ -1482,13 +1461,18 @@ contract('JobController', function(accounts) {
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
         .then(() => jobController.startWork(jobId, {from: worker}))
+        .then(() => helpers.getEthBalance(client))
+        .then(result => clientBalanceBefore = result)
+        .then(() => helpers.getEthBalance(worker))
+        .then(result => workerBalanceBefore = result)
         .then(() => jobController.cancelJob(jobId, {from: client}))
-        .then(() => paymentGateway.getBalance(client))
-        .then(result => assert.equal(result.toString(), clientBalanceBefore.plus(payment.minus(workerOnTop)).toString()))
-        .then(() => paymentGateway.getBalance(worker))
-        .then(result => assert.equal(result.toString(), workerBalanceBefore.add(workerOnTop).toString()))
+        .then(async tx => clientBalanceBefore = clientBalanceBefore.sub(await helpers.getTxExpences(tx.tx)))
+        .then(() => helpers.getEthBalance(client))
+        .then(result => assert.equal(result.toString(16), clientBalanceBefore.plus(payment.minus(workerOnTop)).toString(16)))
+        .then(() => helpers.getEthBalance(worker))
+        .then(result => assert.equal(result.toString(16), workerBalanceBefore.add(workerOnTop).toString(16)))
         .then(() => paymentGateway.getBalance(jobId))
-        .then(result => assert.equal(result.toString(), '0'));
+        .then(result => assert.equal(result.toString(16), '0'));
     });
 
     it('should release jobOfferOnTop + 1 hour of work on `cancelJob` on STARTED job stage', () => {
@@ -1497,17 +1481,13 @@ contract('JobController', function(accounts) {
       const workerOnTop = 1000000000;
       const jobEstimate = 240;
 
-      let clientBalanceBefore;
+      var clientBalanceBefore;
       let workerBalanceBefore;
 
       const jobPaymentEstimate = workerRate * 60 + workerOnTop;
       let payment
 
       return Promise.resolve()
-        .then(() => paymentGateway.getBalance(client))
-        .then(result => clientBalanceBefore = result)
-        .then(() => paymentGateway.getBalance(worker))
-        .then(result => workerBalanceBefore = result)
         .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
@@ -1518,13 +1498,18 @@ contract('JobController', function(accounts) {
         })
         .then(() => jobController.startWork(jobId, {from: worker}))
         .then(() => jobController.confirmStartWork(jobId, {from: client}))
+        .then(() => helpers.getEthBalance(client))
+        .then(result => clientBalanceBefore = result)
+        .then(() => helpers.getEthBalance(worker))
+        .then(result => workerBalanceBefore = result)
         .then(() => jobController.cancelJob(jobId, {from: client}))
-        .then(() => paymentGateway.getBalance(client))
-        .then(result => assert.equal(result.toString(), clientBalanceBefore.plus(payment.minus(jobPaymentEstimate)).toString()))
-        .then(() => paymentGateway.getBalance(worker))
-        .then(result => assert.equal(result.toString(), workerBalanceBefore.add(jobPaymentEstimate).toString()))
+        .then(async tx => clientBalanceBefore = clientBalanceBefore.sub(await helpers.getTxExpences(tx.tx)))
+        .then(() => helpers.getEthBalance(client))
+        .then(result => assert.equal(result.toString(16), clientBalanceBefore.plus(payment.minus(jobPaymentEstimate)).toString(16)))
+        .then(() => helpers.getEthBalance(worker))
+        .then(result => assert.equal(result.toString(16), workerBalanceBefore.add(jobPaymentEstimate).toString(16)))
         .then(() => paymentGateway.getBalance(jobId))
-        .then(result => assert.equal(result.toString(), '0'));
+        .then(result => assert.equal(result.toString(16), '0'));
     });
 
     it('should release jobOfferOnTop + 1 hour of work on `cancelJob` on PENDING_FINISH job stage', () => {
@@ -1533,7 +1518,7 @@ contract('JobController', function(accounts) {
       const workerOnTop = 1000000000;
       const jobEstimate = 240;
 
-      let clientBalanceBefore;
+      var clientBalanceBefore;
       let workerBalanceBefore;
 
       let payment
@@ -1541,10 +1526,6 @@ contract('JobController', function(accounts) {
       const jobPaymentEstimate = workerRate * 60 + workerOnTop;
 
       return Promise.resolve()
-        .then(() => paymentGateway.getBalance(client))
-        .then(result => clientBalanceBefore = result)
-        .then(() => paymentGateway.getBalance(worker))
-        .then(result => workerBalanceBefore = result)
         .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer(
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
@@ -1556,20 +1537,26 @@ contract('JobController', function(accounts) {
         .then(() => jobController.startWork(jobId, {from: worker}))
         .then(() => jobController.confirmStartWork(jobId, {from: client}))
         .then(() => jobController.endWork(jobId, {from: worker}))
+        .then(() => helpers.getEthBalance(client))
+        .then(result => clientBalanceBefore = result)
+        .then(() => helpers.getEthBalance(worker))
+        .then(result => workerBalanceBefore = result)
         .then(() => jobController.cancelJob(jobId, {from: client}))
-        .then(() => paymentGateway.getBalance(client))
-        .then(result => assert.equal(result.toString(), clientBalanceBefore.plus(payment.minus(jobPaymentEstimate)).toString()))
-        .then(() => paymentGateway.getBalance(worker))
-        .then(result => assert.equal(result.toString(), workerBalanceBefore.add(jobPaymentEstimate).toString()))
+        .then(async tx => clientBalanceBefore = clientBalanceBefore.sub(await helpers.getTxExpences(tx.tx)))
+        .then(() => helpers.getEthBalance(client))
+        .then(result => assert.equal(result.toString(16), clientBalanceBefore.plus(payment.minus(jobPaymentEstimate)).toString(16)))
+        .then(() => helpers.getEthBalance(worker))
+        .then(result => assert.equal(result.toString(16), workerBalanceBefore.add(jobPaymentEstimate).toString(16)))
         .then(() => paymentGateway.getBalance(jobId))
-        .then(result => assert.equal(result.toString(), '0'));
+        .then(result => assert.equal(result.toString(16), '0'));
     });
 
     it("should release correct amount of tokens on `releasePayment` when worked for exactly the estimated time but have unaccepted time request", async () => {
       const workerOffer = defaultWorkerOffer
       const timeSpent = workerOffer.jobEstimate;
       const additionalTime = 95
-      const jobPaymentEstimate = workerOffer.workerRate * timeSpent + workerOffer.workerOnTop;
+      const jobPaymentEstimate = workerOffer.workerRate * (timeSpent + 60) + workerOffer.workerOnTop;
+
       return onReleasePayment({ 
         timeSpent: timeSpent, 
         jobPaymentEstimate: jobPaymentEstimate, 
@@ -1577,8 +1564,10 @@ contract('JobController', function(accounts) {
         beforeEndWorkHook: async (jobId) => {
           await jobController.submitAdditionalTimeRequest(jobId, additionalTime, { from: worker, })
 
-          await helpers.increaseTime(additionalTime)
+          await helpers.increaseTime(additionalTime * 60)
           await helpers.mine()
+
+          return 0
         },
       });
     })
@@ -1597,8 +1586,10 @@ contract('JobController', function(accounts) {
           const additionalPayment = await jobController.calculateLock.call(worker, jobId, additionalTime, 0)
           await jobController.acceptAdditionalTimeRequest(jobId, additionalTime, { from: client, value: additionalPayment, })
           
-          await helpers.increaseTime(additionalTime)
+          await helpers.increaseTime(additionalTime * 60)
           await helpers.mine()
+
+          return additionalPayment
         },
       });
     })

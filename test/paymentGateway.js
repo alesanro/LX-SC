@@ -31,7 +31,6 @@ contract('PaymentGateway', function(accounts) {
   let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
   let mock;
 
-
   const assertExpectations = (expected = 0, callsCount = null) => {
     let expectationsCount;
     return () => {
@@ -1057,6 +1056,432 @@ contract('PaymentGateway', function(accounts) {
 
   });
 
+  describe('Transfer all and withdraw', () => {
+
+    it('should check auth', () => {
+      const sender = accounts[6];
+      const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+      const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+      const value = 1000;
+
+      return Promise.resolve()
+        .then(() => deposit(sender, value))
+        .then(async () => {
+          const expectedSig = paymentGateway.contract.transferAllAndWithdraw.getData(0,0,0,0,0,0,0).slice(0,10);
+          return mock.expect(
+            paymentGateway.address,
+            0,
+            roles2LibraryInterface.canCall.getData(
+              sender,
+              paymentGateway.address,
+              expectedSig
+            ), await mock.convertUIntToBytes32(ErrorsNamespace.OK))
+          }
+        )
+        .then(() => paymentGateway.setRoles2Library(Mock.address))
+        .then(() => paymentGateway.transferAllAndWithdraw(
+          sender, receiver, value, changeAddress, value, 0, false,
+          { from: sender, }
+        ))
+        .then(assertInternalBalance(sender, 0))
+        .then(assertInternalBalance(receiver, value))
+        .then(assertInternalBalance(changeAddress, 0))
+    });
+
+    it('should THROW if _from address is null', () => {
+      const sender = accounts[6];
+      const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+      const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+      const balance = 5000;
+      const value = 1000;
+
+      const fakeSender = '0x0';
+      return Promise.resolve()
+        .then(() => deposit(sender, balance))
+        .then(() => asserts.throws(
+            paymentGateway.transferAllAndWithdraw(
+              fakeSender, receiver, value, changeAddress, value, 0, false,
+              { from: paymentProcessor, }
+            )
+        ))
+        .then(assertInternalBalance(sender, balance))
+        .then(assertInternalBalance(receiver, 0))
+        .then(assertInternalBalance(changeAddress, 0))
+    });
+
+    it('should THROW if _to address is null', () => {
+      const sender = accounts[6];
+      const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+      const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+      const balance = 5000;
+      const value = 1000;
+
+      const fakeReceiver = '0x0';
+      return Promise.resolve()
+        .then(() => deposit(sender, balance))
+        .then(() => asserts.throws(
+          paymentGateway.transferAllAndWithdraw(
+            sender, fakeReceiver, value, changeAddress, value, 0, false,
+            { from: paymentProcessor, }
+          )
+        ))
+        .then(assertInternalBalance(sender, balance))
+        .then(assertInternalBalance(fakeReceiver, 0))
+        .then(assertInternalBalance(receiver, 0))
+        .then(assertInternalBalance(changeAddress, 0))
+    });
+
+    it('should THROW if _value is null', () => {
+      const sender = accounts[6];
+      const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+      const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+      const balance = 5000;
+      const value = 0;
+
+      return Promise.resolve()
+        .then(() => deposit(sender, balance))
+        .then(() => asserts.throws(
+          paymentGateway.transferAllAndWithdraw(
+            sender, receiver, value, changeAddress, value, 0, false,
+            { from: paymentProcessor, }
+          )
+        ))
+        .then(assertInternalBalance(sender, balance))
+        .then(assertInternalBalance(receiver, 0))
+        .then(assertInternalBalance(changeAddress, 0))
+    });
+
+    it('should THROW if there is a change left but change address is null', () => {
+      const sender = accounts[6];
+      const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+      const changeAddress = '0x0';
+      const balance = 5000;
+      const value = 1000;
+
+      return Promise.resolve()
+        .then(() => deposit(sender, balance))
+        .then(() => asserts.throws(
+          paymentGateway.transferAllAndWithdraw(
+            sender, receiver, value, changeAddress, value, 0, false,
+            { from: paymentGateway, }
+          )
+        ))
+        .then(assertInternalBalance(sender, balance))
+        .then(assertInternalBalance(receiver, 0))
+        .then(assertInternalBalance(changeAddress, 0))
+    })
+
+    it('should THROW if sender has insufficient balance', () => {
+      const sender = accounts[6];
+      const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+      const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+      const balance = 1000;
+      const value = 1001;
+
+      return Promise.resolve()
+        .then(() => deposit(sender, balance))
+        .then(() => asserts.throws(paymentGateway.transferAllAndWithdraw(
+          sender, receiver, value, changeAddress, value, 0, false,
+          { from: paymentGateway, }
+        )))
+        .then(assertInternalBalance(sender, balance))
+        .then(assertInternalBalance(receiver, 0))
+        .then(assertInternalBalance(changeAddress, 0))
+    });
+
+    it('should THROW if cannot take fee percent', () => {
+      const sender = accounts[6];
+      const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+      const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+      const feeAddress = '0xffffffffffffffffffffffffffffffffffffff02';
+      const balance = 1100;
+      const value = 1000;
+      const feePercent = 1100;  // 11% => 110 tokens
+
+      return Promise.resolve()
+        .then(() => paymentGateway.setFeeAddress(feeAddress))
+        .then(() => paymentGateway.setFeePercent(feePercent))
+        .then(() => deposit(sender, balance))
+        .then(() => asserts.throws(
+          paymentGateway.transferAllAndWithdraw(
+            sender, receiver, value, changeAddress, value, 0, false,
+            { from: paymentProcessor, }
+          )
+        ))
+        .then(assertInternalBalance(sender, balance))
+        .then(assertInternalBalance(receiver, 0))
+        .then(assertInternalBalance(changeAddress, 0))
+        .then(assertInternalBalance(feeAddress, 0))
+    });
+
+    it('should THROW if cannot take additional fee', () => {
+      const sender = accounts[6];
+      const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+      const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+      const feeAddress = '0xffffffffffffffffffffffffffffffffffffff02';
+      const balance = 1100;
+      const value = 1000;
+      const additionalFee = 101;
+
+      return Promise.resolve()
+        .then(() => paymentGateway.setFeeAddress(feeAddress))
+        .then(() => deposit(sender, balance))
+        .then(() => asserts.throws(
+          paymentGateway.transferAllAndWithdraw(
+            sender, receiver, value, changeAddress, value, additionalFee, false,
+            { from: paymentProcessor, }
+          )
+        ))
+        .then(assertInternalBalance(sender, balance))
+        .then(assertInternalBalance(receiver, 0))
+        .then(assertInternalBalance(changeAddress, 0))
+        .then(assertInternalBalance(feeAddress, 0))
+    });
+
+    context("with no withdraw", () => {
+      
+      it('should NOT take fee if fee is set but fee address is not set', () => {
+        const sender = accounts[6];
+        const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+        const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+        const balance = 5000;
+        const value = 1000;
+        const feePercent = 1000;  // 10%
+        const change = balance - value;
+  
+        return Promise.resolve()
+          .then(() => paymentGateway.setFeePercent(feePercent))
+          .then(() => deposit(sender, balance))
+          .then(() => paymentGateway.transferAllAndWithdraw(
+            sender, receiver, value, changeAddress, value, 0, false,
+            { from: paymentProcessor, }
+          ))
+          .then(assertInternalBalance(sender, 0))
+          .then(assertInternalBalance(receiver, value))
+          .then(assertInternalBalance(changeAddress, change))
+      });
+  
+      it('should distribute correct amount of tokens', () => {
+        const sender = accounts[6];
+        const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+        const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+        const balance = 5000;
+        const value = 1000;
+        const change = balance - value;
+  
+        return Promise.resolve()
+          .then(() => deposit(sender, balance))
+          .then(() => paymentGateway.transferAllAndWithdraw(
+            sender, receiver, value, changeAddress, value, 0, false,
+            { from: paymentProcessor, }
+          ))
+          .then(assertInternalBalance(sender, 0))
+          .then(assertInternalBalance(receiver, value))
+          .then(assertInternalBalance(changeAddress, change));
+      });
+  
+      it('should distribute correct amount of tokens with fee percent', () => {
+        const sender = accounts[6];
+        const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+        const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+        const feeAddress = '0xffffffffffffffffffffffffffffffffffffff02';
+        const balance = 5000;
+        const value = 1000;
+        const feePercent = 1000;  // 10%
+        const fee = value * feePercent / 10000;
+        const change = balance - value - fee;
+  
+        return Promise.resolve()
+          .then(() => paymentGateway.setFeeAddress(feeAddress))
+          .then(() => paymentGateway.setFeePercent(feePercent))
+          .then(() => deposit(sender, balance))
+          .then(() => paymentGateway.transferAllAndWithdraw(
+            sender, receiver, value, changeAddress, value, 0, false,
+            { from: paymentProcessor, }
+          ))
+          .then(assertInternalBalance(sender, 0))
+          .then(assertInternalBalance(receiver, value))
+          .then(assertInternalBalance(feeAddress, fee))
+          .then(assertInternalBalance(changeAddress, change));
+      });
+  
+      it('should distribute correct amount of tokens with fee percent and additional fee', () => {
+        const sender = accounts[6];
+        const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+        const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+        const feeAddress = '0xffffffffffffffffffffffffffffffffffffff02';
+        const balance = 5000;
+        const value = 1000;
+        const feePercent = 1000;  // 10%
+        const additionalFee = 200;
+        const fee = value * feePercent / 10000;
+        const change = balance - value - fee - additionalFee;
+  
+        return Promise.resolve()
+          .then(() => paymentGateway.setFeeAddress(feeAddress))
+          .then(() => paymentGateway.setFeePercent(feePercent))
+          .then(() => deposit(sender, balance))
+          .then(() => paymentGateway.transferAllAndWithdraw(
+            sender, receiver, value, changeAddress, value, additionalFee, false,
+            { from: paymentProcessor, }
+          ))
+          .then(assertInternalBalance(sender, 0))
+          .then(assertInternalBalance(receiver, value))
+          .then(assertInternalBalance(feeAddress, fee + additionalFee))
+          .then(assertInternalBalance(changeAddress, change));
+      });
+    })
+
+    context("with withdraw operation", () => {
+
+      it('should NOT take fee if fee is set but fee address is not set', async () => {
+        const sender = accounts[6];
+        const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+        const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+        const balance = 5000;
+        const value = 1000;
+        const feePercent = 1000;  // 10%
+        const change = balance - value;
+  
+        await paymentGateway.setFeePercent(feePercent)
+        await deposit(sender, balance)
+        
+        const beforeHolderReceiverBalance = await paymentGateway.getBalance(receiver)
+        const beforeHolderChangeBalance = await paymentGateway.getBalance(changeAddress)
+        const beforeEthReceiverBalance = await helpers.getEthBalance(receiver)
+        const beforeEthChangeBalance = await helpers.getEthBalance(changeAddress)
+        
+        await paymentGateway.transferAllAndWithdraw(
+          sender, receiver, value, changeAddress, value, 0, true,
+          { from: paymentProcessor, }
+        )
+        await (assertInternalBalance(sender, 0)())
+        await (assertInternalBalance(receiver, beforeHolderReceiverBalance)())
+        await (assertInternalBalance(changeAddress, beforeHolderChangeBalance)())
+        
+        assert.equal(
+          beforeEthReceiverBalance.add(value).toString(16),
+          (await helpers.getEthBalance(receiver)).toString(16)
+        )
+        assert.equal(
+          beforeEthChangeBalance.add(change).toString(16),
+          (await helpers.getEthBalance(changeAddress)).toString(16)
+        )
+      });
+  
+      it('should distribute correct amount of tokens', async () => {
+        const sender = accounts[6];
+        const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+        const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+        const balance = 5000;
+        const value = 1000;
+        const change = balance - value;
+  
+        await deposit(sender, balance)
+        
+        const beforeHolderReceiverBalance = await paymentGateway.getBalance(receiver)
+        const beforeHolderChangeBalance = await paymentGateway.getBalance(changeAddress)
+        const beforeEthReceiverBalance = await helpers.getEthBalance(receiver)
+        const beforeEthChangeBalance = await helpers.getEthBalance(changeAddress)
+        
+        await paymentGateway.transferAllAndWithdraw(
+          sender, receiver, value, changeAddress, value, 0, true,
+          { from: paymentProcessor, }
+        )
+        await (assertInternalBalance(sender, 0)())
+        await (assertInternalBalance(receiver, beforeHolderReceiverBalance)())
+        await (assertInternalBalance(changeAddress, beforeHolderChangeBalance)())
+        
+        assert.equal(
+          beforeEthReceiverBalance.add(value).toString(16),
+          (await helpers.getEthBalance(receiver)).toString(16)
+        )
+        assert.equal(
+          beforeEthChangeBalance.add(change).toString(16),
+          (await helpers.getEthBalance(changeAddress)).toString(16)
+        )
+      });
+  
+      it('should distribute correct amount of tokens with fee percent', async () => {
+        const sender = accounts[6];
+        const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+        const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+        const feeAddress = '0xffffffffffffffffffffffffffffffffffffff02';
+        const balance = 5000;
+        const value = 1000;
+        const feePercent = 1000;  // 10%
+        const fee = value * feePercent / 10000;
+        const change = balance - value - fee;
+
+        await paymentGateway.setFeeAddress(feeAddress)
+        await paymentGateway.setFeePercent(feePercent)
+        await deposit(sender, balance)
+        
+        const beforeHolderReceiverBalance = await paymentGateway.getBalance(receiver)
+        const beforeHolderChangeBalance = await paymentGateway.getBalance(changeAddress)
+        const beforeEthReceiverBalance = await helpers.getEthBalance(receiver)
+        const beforeEthChangeBalance = await helpers.getEthBalance(changeAddress)
+        
+        await paymentGateway.transferAllAndWithdraw(
+          sender, receiver, value, changeAddress, value, 0, true,
+          { from: paymentProcessor, }
+        )
+        await (assertInternalBalance(sender, 0)())
+        await (assertInternalBalance(receiver, beforeHolderReceiverBalance)())
+        await (assertInternalBalance(feeAddress, fee)())
+        await (assertInternalBalance(changeAddress, beforeHolderChangeBalance)())
+        
+        assert.equal(
+          beforeEthReceiverBalance.add(value).toString(16),
+          (await helpers.getEthBalance(receiver)).toString(16)
+        )
+        assert.equal(
+          beforeEthChangeBalance.add(change).toString(16),
+          (await helpers.getEthBalance(changeAddress)).toString(16)
+        )
+      });
+  
+      it('should distribute correct amount of tokens with fee percent and additional fee', async () => {
+        const sender = accounts[6];
+        const receiver = '0xffffffffffffffffffffffffffffffffffffff00';
+        const changeAddress = '0xffffffffffffffffffffffffffffffffffffff01';
+        const feeAddress = '0xffffffffffffffffffffffffffffffffffffff02';
+        const balance = 5000;
+        const value = 1000;
+        const feePercent = 1000;  // 10%
+        const additionalFee = 200;
+        const fee = value * feePercent / 10000;
+        const change = balance - value - fee - additionalFee;
+
+        await paymentGateway.setFeeAddress(feeAddress)
+        await paymentGateway.setFeePercent(feePercent)
+        await deposit(sender, balance)
+      
+        const beforeHolderReceiverBalance = await paymentGateway.getBalance(receiver)
+        const beforeHolderChangeBalance = await paymentGateway.getBalance(changeAddress)
+        const beforeEthReceiverBalance = await helpers.getEthBalance(receiver)
+        const beforeEthChangeBalance = await helpers.getEthBalance(changeAddress)
+        
+        await paymentGateway.transferAllAndWithdraw(
+          sender, receiver, value, changeAddress, value, additionalFee, true,
+          { from: paymentProcessor, }
+        )
+        await (assertInternalBalance(sender, 0)())
+        await (assertInternalBalance(receiver, beforeHolderReceiverBalance)())
+        await (assertInternalBalance(feeAddress, fee + additionalFee)())
+        await (assertInternalBalance(changeAddress, beforeHolderChangeBalance)())
+        
+        assert.equal(
+          beforeEthReceiverBalance.add(value).toString(16),
+          (await helpers.getEthBalance(receiver)).toString(16)
+        )
+        assert.equal(
+          beforeEthChangeBalance.add(change).toString(16),
+          (await helpers.getEthBalance(changeAddress)).toString(16)
+        )
+      });
+    })
+  })
   
   describe('Fees', () => {
 
