@@ -3,11 +3,11 @@
 * Licensed under the AGPL Version 3 license.
 */
 
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.21;
 
-import "./base/Owned.sol";
-import "./adapters/StorageAdapter.sol";
-import "./adapters/Roles2LibraryAdapter.sol";
+import "solidity-shared-lib/contracts/Owned.sol";
+import "solidity-storage-lib/contracts/StorageAdapter.sol";
+import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
 
 /**
 *  @title ContractsManager
@@ -20,6 +20,8 @@ contract ContractsManager is Owned, StorageAdapter, Roles2LibraryAdapter {
     StorageInterface.AddressesSet contractsAddresses;
     StorageInterface.Bytes32AddressMapping contractsTypes;
 
+    string public version = "v0.0.1";
+
     event ContractsManagerAddContract(address indexed contractAddress, bytes32 t);
     event ContractsManagerRemoveContract(address indexed contractAddress);
     event Error(address indexed self, uint errorCode);
@@ -27,13 +29,13 @@ contract ContractsManager is Owned, StorageAdapter, Roles2LibraryAdapter {
     /**
     *  @notice Constructor that sets `storage` and `crate` to given values.
     */
-    function ContractsManager(Storage _store, bytes32 _crate, address _roles2Library)
+    constructor(Storage _store, bytes32 _crate, address _roles2Library)
     public
     StorageAdapter(_store, _crate)
     Roles2LibraryAdapter(_roles2Library)
     {
-        contractsAddresses.init('contracts');
-        contractsTypes.init('contractTypes');
+        contractsAddresses.init("contracts");
+        contractsTypes.init("contractTypes");
     }
 
     /**
@@ -56,7 +58,7 @@ contract ContractsManager is Owned, StorageAdapter, Roles2LibraryAdapter {
         store.add(contractsAddresses, _contract);
         store.set(contractsTypes, _type, _contract);
 
-        ContractsManagerAddContract(_contract, _type);
+        emit ContractsManagerAddContract(_contract, _type);
         return OK;
     }
 
@@ -80,7 +82,7 @@ contract ContractsManager is Owned, StorageAdapter, Roles2LibraryAdapter {
         // TODO
         //store.remove(contractsTypes, _type, _contract);
 
-        ContractsManagerRemoveContract(_contract);
+        emit ContractsManagerRemoveContract(_contract);
         return OK;
     }
 
@@ -128,7 +130,7 @@ contract ContractsManager is Owned, StorageAdapter, Roles2LibraryAdapter {
     private
     returns (uint)
     {
-        Error(msg.sender, e);
+        emit Error(msg.sender, e);
         return e;
     }
 }

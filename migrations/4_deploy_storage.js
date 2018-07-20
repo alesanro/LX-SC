@@ -1,5 +1,5 @@
 "use strict";
-const Storage = artifacts.require('./Storage.sol');
+const Storage = artifacts.require('Storage');
 
 module.exports = deployer => {
     deployer.deploy(Storage)

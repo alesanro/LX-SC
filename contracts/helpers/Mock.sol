@@ -3,7 +3,7 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 contract Mock {
 
@@ -28,10 +28,13 @@ contract Mock {
             }
         }
         callsCount++;
-        bytes32 callHash = keccak256(msg.sender, msg.value, msg.data);
+        bytes32 callHash = keccak256(abi.encodePacked(msg.sender, msg.value, msg.data));
         if (expectations[nextExpectation].callHash != callHash) {
-            UnexpectedCall(nextExpectation, msg.sender, msg.value, msg.data, callHash);
-            return;
+            emit UnexpectedCall(nextExpectation, msg.sender, msg.value, msg.data, callHash);
+            assembly {
+                mstore(0, 0)
+                return (0, 32)
+            }
         }
         bytes32 result = expectations[nextExpectation++].callReturn;
         assembly {
@@ -45,11 +48,15 @@ contract Mock {
     }
 
     function expect(address _from, uint _value, bytes _input, bytes32 _return) public {
-        expectations[++expectationsCount] = Expect(keccak256(_from, _value, _input), _return);
+        expectations[++expectationsCount] = Expect(keccak256(abi.encodePacked(_from, _value, _input)), _return);
     }
 
     function convertUIntToBytes32(uint _value) public pure returns (bytes32) {
         return bytes32(_value);
+    }
+
+    function convertBytes32ToUInt(bytes32 _value) public pure returns (uint) {
+        return uint(_value);
     }
 
     function convertToBytes32(bytes32 _value) public pure returns (bytes32) {

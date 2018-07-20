@@ -4,7 +4,7 @@ const StorageManager = artifacts.require('./StorageManager.sol');
 
 module.exports = deployer => {
     deployer.deploy(StorageManager)
-    .then(() => console.log("[Migration] Storage #deployed"))
+    .then(() => console.log("[Migration] StorageManager #deployed"))
 
     .then(() => Storage.deployed())
     .then(storage => storage.setManager(StorageManager.address))

@@ -6,24 +6,24 @@
 pragma solidity ^0.4.18;
 
 
+import "solidity-storage-lib/contracts/StorageAdapter.sol";
 import "./base/BitOps.sol";
-import "./adapters/StorageAdapter.sol";
 
 
 contract JobDataCore is StorageAdapter, BitOps {
 
-    enum JobState { 
-        NOT_SET, 
-        CREATED, 
-        OFFER_ACCEPTED, 
-        PENDING_START, 
-        STARTED, 
-        PENDING_FINISH, 
-        FINISHED, 
-        WORK_ACCEPTED, 
-        WORK_REJECTED, 
-        FINALIZED
-    }
+    /* JobState */
+    
+    uint constant JOB_STATE_NOT_SET = 0;
+    uint constant JOB_STATE_CREATED = 0x001;        // 00000000001
+    uint constant JOB_STATE_OFFER_ACCEPTED = 0x002; // 00000000010
+    uint constant JOB_STATE_PENDING_START = 0x004;  // 00000000100
+    uint constant JOB_STATE_STARTED = 0x008;        // 00000001000
+    uint constant JOB_STATE_PENDING_FINISH = 0x010; // 00000010000
+    uint constant JOB_STATE_FINISHED = 0x020;       // 00000100000
+    uint constant JOB_STATE_WORK_ACCEPTED = 0x040;  // 00001000000
+    uint constant JOB_STATE_WORK_REJECTED = 0x080;  // 00010000000
+    uint constant JOB_STATE_FINALIZED = 0x100;      // 00100000000
 
     uint constant OK = 1;
 
@@ -70,6 +70,9 @@ contract JobDataCore is StorageAdapter, BitOps {
     /// @dev Workflow type for a job
     StorageInterface.UIntUIntMapping jobWorkflowType;  // jobId => workflow type
 
+    /// @dev Requested amount of time a worker needs to complete a job
+    StorageInterface.UIntUIntMapping jobRequestedAdditionalTime; // In minutes
+
     /// @dev Default pay for a posted job that are recommended for offers
     StorageInterface.UIntUIntMapping jobDefaultPay;  // jobId => default pay size
     StorageInterface.UIntAddressUIntMapping jobOfferRate; // Per minute.
@@ -82,13 +85,17 @@ contract JobDataCore is StorageAdapter, BitOps {
     StorageInterface.UIntSetMapping workerJobs;
     /// @dev mapping(posted offer job id => set(worker addresses))
     StorageInterface.AddressesSetMapping jobOffers;
+    /// @dev mapping(posted offer job id => mapping(worker => post date))
+    StorageInterface.UIntAddressUIntMapping jobOfferPostedAt;
 
     StorageInterface.UIntBoolMapping bindStatus;
 
     // At which state job has been marked as FINALIZED
     StorageInterface.UIntUIntMapping jobFinalizedAt;
 
-    function JobDataCore(
+    string public version = "v0.0.1";
+
+    constructor(
         Storage _store,
         bytes32 _crate
     )
@@ -123,6 +130,7 @@ contract JobDataCore is StorageAdapter, BitOps {
         jobPausedFor.init("jobPausedFor");
 
         jobWorkflowType.init("jobWorkflowType");
+        jobRequestedAdditionalTime.init("jobRequestedTime");
         jobDefaultPay.init("jobDefaultPay");
         jobOfferRate.init("jobOfferRate");
         jobOfferEstimate.init("jobOfferEstimate");
@@ -133,6 +141,7 @@ contract JobDataCore is StorageAdapter, BitOps {
         clientJobs.init("clientJobs");
         workerJobs.init("workerJobs");
         jobOffers.init("jobOffers");
+        jobOfferPostedAt.init("jobOfferPostedAt");
 
         bindStatus.init("bindStatus");
             

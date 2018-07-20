@@ -1,15 +1,15 @@
 {
   "name": "@laborx/sc",
-  "version": "0.0.8",
+  "version": "0.0.10",
   "description": "ChronoBank Labor-X Smart Contracts",
   "scripts": {
-    "test:all": "./node_modules/truffle/build/cli.bundled.js test",
-    "compile": "./node_modules/truffle/build/cli.bundled.js compile",
-    "compile:all": "./node_modules/truffle/build/cli.bundled.js compile --all",
-    "migrate": "./node_modules/truffle/build/cli.bundled.js migrate",
-    "migrate:reset": "./node_modules/truffle/build/cli.bundled.js migrate --reset",
-    "console": "./node_modules/truffle/build/cli.bundled.js console --network development",
-    "testrpc": "./node_modules/ethereumjs-testrpc/build/cli.node.js -g 1 --gasLimit 4700000 --trace_request true | grep -Ev \"FilterSubprovider|eth_getFilterChanges\""
+    "test:all": "npx truffle test",
+    "compile": "npx truffle compile",
+    "compile:all": "npx truffle compile --all",
+    "migrate": "npx truffle migrate",
+    "migrate:reset": "npx truffle migrate --reset",
+    "console": "npx truffle console --network development",
+    "testrpc": "npx ganache-cli -g 1 --gasLimit 8000000 --trace_request true | grep -Ev \"FilterSubprovider|eth_getFilterChanges\""
   },
   "repository": {
     "type": "git",
@@ -27,13 +27,18 @@
   },
   "homepage": "https://github.com/ChronoBank/LX-SC#readme",
   "dependencies": {
-    "bluebird": "^3.5.0",
-    "ethereumjs-testrpc": "^6.0.3",
-    "truffle": "4.1.0",
     "abi-decoder": "^1.0.9",
+    "solidity-shared-lib": "chronobank/solidity-shared-lib#v0.2.2",
+    "solidity-eventshistory-lib": "chronobank/solidity-eventshistory-lib#v0.1.1",
+    "solidity-storage-lib": "chronobank/solidity-storage-lib#v0.2.0",
+    "solidity-roles-lib": "chronobank/solidity-roles-lib#v0.1.0",
+    "solidity-user-lib": "chronobank/solidity-user-lib#v0.1.0",
     "truffle-hdwallet-provider": "mikefluff/truffle-hdwallet-provider#7a2eccca1ba17c235a3ef258914ca74ea5f13014"
   },
   "devDependencies": {
+    "ganache-cli": "6.1.4",
+    "truffle": "4.1.13",
+    "babel-polyfill": "^6.26.0",
     "standard-version": "^4.0.0"
   }
 }

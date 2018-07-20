@@ -3,13 +3,13 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 
-import './adapters/MultiEventsHistoryAdapter.sol';
-import './adapters/Roles2LibraryAdapter.sol';
-import './adapters/StorageAdapter.sol';
-import './base/BitOps.sol';
+import "solidity-storage-lib/contracts/StorageAdapter.sol";
+import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
+import "solidity-eventshistory-lib/contracts/MultiEventsHistoryAdapter.sol";
+import "./base/BitOps.sol";
 
 
 contract UserLibraryInterface {
@@ -20,13 +20,14 @@ contract UserLibraryInterface {
 
 
 contract JobControllerInterface {
-    function getJobState(uint _jobId) public returns (uint);
-    function getJobClient(uint _jobId) public returns (address);
-    function getJobWorker(uint _jobId) public returns (address);
-    function getJobSkillsArea(uint _jobId) public returns (uint);
-    function getJobSkillsCategory(uint _jobId) public returns (uint);
-    function getJobSkills(uint _jobId) public returns (uint);
-    function getFinalState(uint _jobId) public returns (uint);
+    function getJobState(uint _jobId) public view returns (uint);
+    function getJobClient(uint _jobId) public view returns (address);
+    function getJobWorker(uint _jobId) public view returns (address);
+    function getJobSkillsArea(uint _jobId) public view returns (uint);
+    function getJobSkillsCategory(uint _jobId) public view returns (uint);
+    function getJobSkills(uint _jobId) public view returns (uint);
+    function getFinalState(uint _jobId) public view returns (uint);
+    function isActivatedState(uint _jobId, uint _jobState) public view returns (bool);
 }
 
 
@@ -54,18 +55,9 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     event SkillEvaluated(address indexed self, address indexed rater, address indexed to, uint8 rating, uint area, uint category, uint skill);
     event BoardRatingGiven(address indexed self, address indexed rater, uint indexed to, uint8 rating);
 
-    enum JobState { 
-        NOT_SET, 
-        CREATED, 
-        OFFER_ACCEPTED, 
-        PENDING_START, 
-        STARTED, 
-        PENDING_FINISH, 
-        FINISHED, 
-        WORK_ACCEPTED, 
-        WORK_REJECTED, 
-        FINALIZED
-    }
+    /// @dev See JobDataCore#JOB_STATE constant definitions
+    uint constant JOB_STATE_STARTED = 0x008;        // 00000001000
+    uint constant JOB_STATE_FINALIZED = 0x100;      // 00100000000
 
     JobControllerInterface jobController;
     UserLibraryInterface userLibrary;
@@ -91,9 +83,11 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
 
     StorageInterface.AddressUIntUInt8Mapping boardRating;
 
+    string public version = "v0.0.1";
+
     modifier canSetRating(uint _jobId) {
          // Ensure job is FINALIZED
-        if (jobController.getJobState(_jobId) != uint(JobState.FINALIZED)) {
+        if (jobController.getJobState(_jobId) != JOB_STATE_FINALIZED) {
             _emitErrorCode(RATING_AND_REPUTATION_CANNOT_SET_RATING);
             assembly {
                 mstore(0, 17001) // RATING_AND_REPUTATION_CANNOT_SET_RATING
@@ -104,7 +98,8 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     }
 
     modifier canSetJobRating(uint _jobId, address _to) {
-        var (, rating) = store.get(jobRatingsGiven, _to, _jobId);
+        uint rating;
+        (, rating) = store.get(jobRatingsGiven, _to, _jobId);
         if (rating > 0) {
             _emitErrorCode(RATING_AND_REPUTATION_RATING_IS_ALREADY_SET);
             assembly {
@@ -135,7 +130,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
         if (
             jobController.getJobClient(_jobId) != msg.sender ||
             jobController.getJobWorker(_jobId) != _to ||
-            jobController.getFinalState(_jobId) < 4 ||  // Ensure job is at least STARTED
+            !jobController.isActivatedState(_jobId, jobController.getFinalState(_jobId)) ||  // Ensure job is activated (See docs for isActiveatedState method)
             store.get(skillRatingSet, _jobId)  // Ensure skill rating wasn't set yet
         ) {
             _emitErrorCode(RATING_AND_REPUTATION_CANNOT_SET_RATING);
@@ -165,7 +160,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
       _;
     }
 
-    function RatingsAndReputationLibrary(
+    constructor(
 		Storage _store, 
 		bytes32 _crate, 
 		address _roles2Library
@@ -293,7 +288,7 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
         return OK;
     }
 
-    function _checkAreaAndCategory(uint _jobId, uint _area, uint _category) internal returns (bool) {
+    function _checkAreaAndCategory(uint _jobId, uint _area, uint _category) internal view returns (bool) {
         return jobController.getJobSkillsArea(_jobId) == _area &&
                jobController.getJobSkillsCategory(_jobId) == _category;
     }
@@ -448,31 +443,31 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
     }
 
     function emitUserRatingGiven(address _rater, address _to, uint _rating) public {
-        UserRatingGiven(_self(), _rater, _to, _rating);
+        emit UserRatingGiven(_self(), _rater, _to, _rating);
     }
 
     function emitBoardRatingGiven(address _rater, uint _to, uint8 _rating) public {
-        BoardRatingGiven(_self(), _rater, _to, _rating);
+        emit BoardRatingGiven(_self(), _rater, _to, _rating);
     }
 
     function emitJobRatingGiven(address _rater, address _to, uint _jobId, uint8 _rating) public {
-        JobRatingGiven(_self(), _rater, _to, _rating, _jobId);
+        emit JobRatingGiven(_self(), _rater, _to, _rating, _jobId);
     }
 
     function emitSkillRatingGiven(address _rater, address _to, uint8 _rating, uint _area, uint _category, uint _skill, uint _jobId) public {
-        SkillRatingGiven(_self(), _rater, _to, _rating, _area, _category, _skill, _jobId);
+        emit SkillRatingGiven(_self(), _rater, _to, _rating, _area, _category, _skill, _jobId);
     }
 
     function emitAreaEvaluated(address _rater, address _to, uint8 _rating, uint _area) public {
-        AreaEvaluated(_self(), _rater, _to, _rating, _area);
+        emit AreaEvaluated(_self(), _rater, _to, _rating, _area);
     }
 
     function emitCategoryEvaluated(address _rater, address _to, uint8 _rating, uint _area, uint _category) public {
-        CategoryEvaluated(_self(), _rater, _to, _rating, _area, _category);
+        emit CategoryEvaluated(_self(), _rater, _to, _rating, _area, _category);
     }
 
     function emitSkillEvaluated(address _rater, address _to, uint8 _rating, uint _area, uint _category, uint _skill) public {
-        SkillEvaluated(_self(), _rater, _to, _rating, _area, _category, _skill);
+        emit SkillEvaluated(_self(), _rater, _to, _rating, _area, _category, _skill);
     }
 
     function _emitUserRatingGiven(address _rater, address _to, uint _rating) internal {

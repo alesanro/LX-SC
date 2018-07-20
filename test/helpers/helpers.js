@@ -4,7 +4,6 @@ const Asserts = require('./asserts');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
 const asserts = Asserts(assert);
-const eventsHelper = require('./eventsHelper');
 
 Array.prototype.unique = function() {
   return this.filter(function (value, index, self) {
@@ -19,7 +18,7 @@ Array.prototype.removeZeros = function() {
 }
 
 
-module.exports = {
+const helpers = {
   getSig: (callData) => web3.sha3(callData).slice(0, 10),
   increaseTime: (time) => {
     return new Promise((resolve, reject) => {
@@ -107,5 +106,25 @@ module.exports = {
   assertJump: (error) => {
     assert.isAbove(error.message.search('invalid opcode'), -1, 'Invalid opcode error must be returned');
   },
-
 }
+
+helpers.getEthBalance = acc => new Promise((resolve, reject) => {
+  web3.eth.getBalance(acc, (e, b) => (e === undefined || e === null) ? resolve(web3.toBigNumber(b)): reject(e))
+})
+
+helpers.getTx = hash => new Promise((resolve, reject) => {
+  web3.eth.getTransaction(hash, (e, tx) => (e === undefined || e === null) ? resolve(tx) : reject(e))
+})
+
+helpers.getTxReceipt = hash => new Promise((resolve, reject) => {
+  web3.eth.getTransactionReceipt(hash, (e, tx) => (e === undefined || e === null) ? resolve(tx) : reject(e))
+})
+
+helpers.getTxExpences = async hash => {
+  const fullTx = await helpers.getTx(hash)
+  const receiptTx = await helpers.getTxReceipt(hash)
+
+  return web3.toBigNumber(fullTx.gasPrice).mul(web3.toBigNumber(receiptTx.gasUsed))
+}
+
+module.exports = helpers

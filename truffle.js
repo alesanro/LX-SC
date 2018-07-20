@@ -14,11 +14,11 @@ module.exports = {
             host: 'localhost',
             port: 8545,
             network_id: '*', // Match any network id
-            gas: 4700000
+            gas: 8000000
         },
         ntr1x: {
-            network_id: 0x21240,
-            provider: function () { return new HDWalletProvider(getWallet(),'QWEpoi123','http://node2.parity.tp.ntr1x.com:8545')},
+            network_id: 0x58,
+            provider: function () { return new HDWalletProvider(getWallet(),'QWEpoi123','https://node2.parity.tp.ntr1x.com:8545')},
             gas: 4700000,
             gasPrice: 1000000000
         }

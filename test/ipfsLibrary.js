@@ -2,12 +2,10 @@
 
 const IPFSLibrary = artifacts.require('./IPFSLibrary.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
-const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const Storage = artifacts.require('./Storage.sol');
 
 const Asserts = require('./helpers/asserts');
 const Reverter = require('./helpers/reverter');
-const Promise = require('bluebird');
 
 contract('IPFSLibrary', function(accounts) {
   const reverter = new Reverter(web3);
@@ -18,7 +16,6 @@ contract('IPFSLibrary', function(accounts) {
   let storage;
   let multiEventsHistory;
   let ipfsLibrary;
-  let roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
 
   before('setup', () => {
     return Storage.deployed()

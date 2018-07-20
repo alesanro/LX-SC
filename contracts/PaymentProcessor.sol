@@ -5,12 +5,41 @@
 
 pragma solidity ^0.4.18;
 
-import './adapters/Roles2LibraryAdapter.sol';
+
+import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
 
 
-contract PaymentGatewayInterface {
-    function transferWithFee(address _from, address _to, uint _feeFromValue, uint _additionalFee) public payable returns (uint);
-    function transferAll(address _from, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee) public returns (uint);
+interface PaymentGatewayInterface {
+    function transferWithFee(
+        address _from, 
+        address _to, 
+        uint _feeFromValue, 
+        uint _additionalFee
+        ) 
+        external 
+        payable 
+        returns (uint);
+    function transferAll(
+        address _from, 
+        address _to, 
+        uint _value, 
+        address _change, 
+        uint _feeFromValue, 
+        uint _additionalFee
+        ) 
+        external 
+        returns (uint);
+    function transferAllAndWithdraw(
+        address _from, 
+        address _to, 
+        uint _value, 
+        address _change, 
+        uint _feeFromValue, 
+        uint _additionalFee,
+        bool _shouldWithdraw
+        ) 
+        external 
+        returns (uint);
 }
 
 
@@ -19,10 +48,11 @@ contract PaymentProcessor is Roles2LibraryAdapter {
     uint constant PAYMENT_PROCESSOR_SCOPE = 16000;
     uint constant PAYMENT_PROCESSOR_OPERATION_IS_NOT_APPROVED = PAYMENT_PROCESSOR_SCOPE + 1;
 
-
     PaymentGatewayInterface public paymentGateway;
     bool public serviceMode = false;
     mapping(bytes32 => bool) public approved;
+
+    string public version = "v0.0.1";
 
     modifier onlyApproved(bytes32 _operationId) {
         if (serviceMode && !approved[_operationId]) {
@@ -39,7 +69,7 @@ contract PaymentProcessor is Roles2LibraryAdapter {
         }
     }
 
-    function PaymentProcessor(address _roles2Library) public Roles2LibraryAdapter(_roles2Library) {}
+    constructor(address _roles2Library) public Roles2LibraryAdapter(_roles2Library) {}
 
 
     // Only contract owner
@@ -90,13 +120,14 @@ contract PaymentProcessor is Roles2LibraryAdapter {
     onlyApproved(_operationId)
     external
     returns (uint) {
-        return paymentGateway.transferAll(
-                address(_operationId),
-                _to,
-                _value,
-                _change,
-                _feeFromValue,
-                _additionalFee
-            );
+        return paymentGateway.transferAllAndWithdraw(
+            address(_operationId),
+            _to,
+            _value,
+            _change,
+            _feeFromValue,
+            _additionalFee,
+            true
+        );
     }
 }

@@ -6,18 +6,15 @@ const Mock = artifacts.require('./Mock.sol');
 const MultiEventsHistory = artifacts.require('./MultiEventsHistory.sol');
 const PaymentGateway = artifacts.require('./PaymentGateway.sol');
 const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
-const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const Storage = artifacts.require('./Storage.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
 const BoardController = artifacts.require('./BoardController.sol');
 const Roles2Library = artifacts.require('./Roles2Library.sol');
 
 const Asserts = require('./helpers/asserts');
-const Promise = require('bluebird');
 const Reverter = require('./helpers/reverter');
 const eventsHelper = require('./helpers/eventsHelper');
 
-const helpers = require('./helpers/helpers');
 const ErrorsNamespace = require('../common/errors')
 
 
@@ -26,22 +23,6 @@ contract('BoardController', function(accounts) {
   afterEach('revert', reverter.revert);
 
   const asserts = Asserts(assert);
-  const roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
-  const userLibraryInterface = web3.eth.contract(UserLibrary.abi).at('0x0');
-
-  const assertInternalBalance = (address, coinAddress, expectedValue) => {
-    return (actualValue) => {
-      return paymentGateway.getBalance(address, coinAddress)
-      .then(asserts.equal(expectedValue));
-    };
-  };
-
-  const assertExternalBalance = (address, coinAddress, expectedValue) => {
-    return (actualValue) => {
-      return paymentGateway.getBalanceOf(address, coinAddress)
-      .then(asserts.equal(expectedValue));
-    };
-  };
 
   let storage;
   let boardController;
@@ -63,9 +44,6 @@ contract('BoardController', function(accounts) {
   const client = accounts[1];
   const role = 44;
   const boardId = 1;
-  const boardName = 'Name';
-  const boardDescription = 'Description';
-  const boardIpfsHash = "board_ipfs_hash";
   const boardTags = 1;
   const boardTagsArea = 1;
   const boardTagsCategory = 1;

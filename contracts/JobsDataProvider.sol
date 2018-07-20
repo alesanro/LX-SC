@@ -17,7 +17,7 @@ interface BoardControllerAccessor {
 
 contract JobsDataProvider is JobDataCore {
 
-    function JobsDataProvider(
+    constructor(
         Storage _store,
         bytes32 _crate
     )
@@ -34,7 +34,7 @@ contract JobsDataProvider is JobDataCore {
         uint _skillsArea,
         uint _skillsCategory,
         uint _skills,
-        bool _paused,
+        uint _paused,
         uint _fromId,
         uint _maxLen
     )
@@ -64,7 +64,7 @@ contract JobsDataProvider is JobDataCore {
         uint _skillsArea,
         uint _skillsCategory,
         uint _skills,
-        bool _paused,
+        uint _paused,
         uint _fromIdx,
         uint _maxLen
     )
@@ -72,7 +72,7 @@ contract JobsDataProvider is JobDataCore {
     view
     returns (uint[] _ids)
     {
-        uint _count = store.count(clientJobs, bytes32(_client));
+        uint _count = getJobForClientCount(_client);
         require(_fromIdx < _count);
         _maxLen = (_fromIdx + _maxLen <= _count) ? _maxLen : (_count - _fromIdx);
         _ids = new uint[](_maxLen);
@@ -93,13 +93,15 @@ contract JobsDataProvider is JobDataCore {
     /// @notice Gets filtered jobs for a worker
     /// Doesn't inlcude jobs for which a worker had posted an offer but
     /// other worker got the job
+    /// @param _jobState a bitmask, job's state; if INT.MAX then jobs with any state will be included in output
+    /// @param _paused if job should be paused or not, convertible to bool; if greater than '1' then output includes both states
     function getJobForWorker(
         address _worker,
         uint _jobState,
         uint _skillsArea,
         uint _skillsCategory,
         uint _skills,
-        bool _paused,
+        uint _paused,
         uint _fromIdx,
         uint _maxLen
     )
@@ -107,7 +109,7 @@ contract JobsDataProvider is JobDataCore {
     view
     returns (uint[] _ids)
     {
-        uint _count = store.count(workerJobs, bytes32(_worker));
+        uint _count = getJobForWorkerCount(_worker);
         require(_fromIdx < _count);
         _maxLen = (_fromIdx + _maxLen <= _count) ? _maxLen : (_count - _fromIdx);
         _ids = new uint[](_maxLen);
@@ -127,24 +129,28 @@ contract JobsDataProvider is JobDataCore {
         uint _skillsArea,
         uint _skillsCategory,
         uint _skills,
-        bool _paused
+        uint _paused
     )
     private
     view
     returns (bool)
     {
-        return _jobState == store.get(jobState, _jobId) &&
-            _paused == store.get(jobPaused, _jobId) &&
+        return _hasFlag(store.get(jobState, _jobId), _jobState) &&
+            (_paused > 1 ? true : (_toBool(_paused) == store.get(jobPaused, _jobId))) &&
             _hasFlag(store.get(jobSkillsArea, _jobId), _skillsArea) &&
             _hasFlag(store.get(jobSkillsCategory, _jobId), _skillsCategory) &&
             _hasFlag(store.get(jobSkills, _jobId), _skills);
+    }
+
+    function _toBool(uint _value) private pure returns (bool) {
+        return _value == 1 ? true : false;
     }
 
     function getJobsCount() public view returns (uint) {
         return store.get(jobsCount);
     }
 
-    uint8 constant JOBS_RESULT_OFFSET = 21;
+    uint8 constant JOBS_RESULT_OFFSET = 22;
 
     /// @notice Gets jobs details in an archived way (too little stack size
     /// for such amount of return values)
@@ -169,7 +175,8 @@ contract JobsDataProvider is JobDataCore {
     ///     "_pausedFor": "`uint` work's pause duration",
     ///     "_pendingFinishAt": "`uint` pending finish timestamp",
     ///     "_finishedAt": "`uint` work finished timestamp",
-    ///     "_finalizedAt": "`uint` paycheck finalized timestamp"
+    ///     "_finalizedAt": "`uint` paycheck finalized timestamp",
+    ///     "_timeRequested": "`uint` additional time requested by a worker, must be accepted/rejected by a client",
     /// }
     function getJobsByIds(uint[] _jobIds) public view returns (
         bytes32[] _results
@@ -197,6 +204,7 @@ contract JobsDataProvider is JobDataCore {
             _results[_idx * JOBS_RESULT_OFFSET + 18] = bytes32(store.get(jobPendingFinishAt, _jobIds[_idx]));
             _results[_idx * JOBS_RESULT_OFFSET + 19] = bytes32(store.get(jobFinishTime, _jobIds[_idx]));
             _results[_idx * JOBS_RESULT_OFFSET + 20] = bytes32(store.get(jobFinalizedAt, _jobIds[_idx]));
+            _results[_idx * JOBS_RESULT_OFFSET + 21] = bytes32(store.get(jobRequestedAdditionalTime, _jobIds[_idx]));
 
             if (address(_boardController) != 0x0) {
                 _results[_idx * JOBS_RESULT_OFFSET + 1] = bytes32(_boardController.getJobsBoard(_jobIds[_idx]));
@@ -213,7 +221,8 @@ contract JobsDataProvider is JobDataCore {
         address[] _workers,
         uint[] _rates,
         uint[] _estimates,
-        uint[] _onTops
+        uint[] _onTops,
+        uint[] _offerPostedAt
     ) {
         uint _offersCount = getJobOffersCount(_jobId);
         if (_fromIdx > _offersCount) {
@@ -227,6 +236,7 @@ contract JobsDataProvider is JobDataCore {
         _rates = new uint[](_maxLen);
         _estimates = new uint[](_maxLen);
         _onTops = new uint[](_maxLen);
+        _offerPostedAt = new uint[](_maxLen);
         uint _pointer = 0;
 
         for (uint _offerIdx = _fromIdx; _offerIdx < _fromIdx + _maxLen; ++_offerIdx) {
@@ -234,6 +244,7 @@ contract JobsDataProvider is JobDataCore {
             _rates[_pointer] = store.get(jobOfferRate, _jobId, _workers[_pointer]);
             _estimates[_pointer] = store.get(jobOfferEstimate, _jobId, _workers[_pointer]);
             _onTops[_pointer] = store.get(jobOfferOntop, _jobId, _workers[_pointer]);
+            _offerPostedAt[_pointer] = store.get(jobOfferPostedAt, _jobId, _workers[_pointer]);
             _pointer += 1;
         }
     }
@@ -244,6 +255,22 @@ contract JobsDataProvider is JobDataCore {
 
     function getJobWorker(uint _jobId) public view returns (address) {
         return store.get(jobWorker, _jobId);
+    }
+
+    function isActivatedState(uint _jobId, uint _jobState) public view returns (bool) {
+        uint _flow = store.get(jobWorkflowType, _jobId);
+        bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
+        if (_needsConfirmation && 
+        _jobState >= JOB_STATE_STARTED
+        ) {
+            return true;
+        }
+
+        if (!_needsConfirmation &&
+            _jobState >= JOB_STATE_PENDING_START
+        ) {
+            return true;
+        }
     }
 
     function getJobSkillsArea(uint _jobId) public view returns (uint) {

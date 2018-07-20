@@ -1,10 +1,10 @@
 "use strict";
 
-const BalanceHolder = artifacts.require('./BalanceHolder.sol');
-const ERC20Interface = artifacts.require('./ERC20Interface.sol');
-const Mock = artifacts.require('./Mock.sol');
-const Roles2Library = artifacts.require('./Roles2Library.sol');
-const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
+const BalanceHolder = artifacts.require('BalanceHolder');
+const ERC20Interface = artifacts.require('ERC20Interface');
+const Mock = artifacts.require('Mock');
+const Roles2Library = artifacts.require('Roles2Library');
+const Roles2LibraryInterface = artifacts.require('Roles2LibraryInterface');
 
 const Asserts = require('./helpers/asserts');
 const Reverter = require('./helpers/reverter');

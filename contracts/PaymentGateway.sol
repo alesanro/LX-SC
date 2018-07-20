@@ -3,12 +3,12 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
-import './adapters/MultiEventsHistoryAdapter.sol';
-import './adapters/Roles2LibraryAdapter.sol';
-import './adapters/StorageAdapter.sol';
-import './libs/SafeMath.sol';
+import "solidity-storage-lib/contracts/StorageAdapter.sol";
+import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
+import "solidity-eventshistory-lib/contracts/MultiEventsHistoryAdapter.sol";
+import "./libs/SafeMath.sol";
 
 
 contract ERC20BalanceInterface {
@@ -31,18 +31,19 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     uint constant PAYMENT_GATEWAY_TRANSFER_FAILED = PAYMENT_GATEWAY_SCOPE + 2;
     uint constant PAYMENT_GATEWAY_NO_FEE_ADDRESS_DESTINATION = PAYMENT_GATEWAY_SCOPE + 3;
 
-
     event FeeSet(address indexed self, uint feePercent);
     event Deposited(address indexed self, address indexed by, uint value);
     event Withdrawn(address indexed self, address indexed by, uint value);
-    event Transferred(address indexed self, address from, address indexed to, uint value);
+    event Transferred(address indexed self, address from, address to, uint value);
 
     StorageInterface.Address balanceHolder;
     StorageInterface.AddressUIntMapping balances; // contract => user => balance
     StorageInterface.Address feeAddress;
     StorageInterface.UInt fees; // 10000 is 100%.
 
-    function PaymentGateway(
+    string public version = "v0.0.1";
+
+    constructor(
         Storage _store,
         bytes32 _crate,
         address _roles2Library
@@ -187,11 +188,39 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     external
     returns (uint)
     {
+        return this.transferAllAndWithdraw(
+            _from,
+            _to,
+            _value,
+            _change,
+            _feeFromValue,
+            _additionalFee,
+            false
+        );
+    }
+
+    function transferAllAndWithdraw(
+        address _from,
+        address _to,
+        uint _value,
+        address _change,
+        uint _feeFromValue,
+        uint _additionalFee,
+        bool _shouldWithdraw
+    )
+    auth
+    external
+    returns (uint)
+    {
         require(_from != 0x0);
 
         _addBalance(_to, _value);
         _emitTransferred(_from, _to, _value);
 
+        if (_shouldWithdraw) {
+            require(OK == _withdraw(_to, _value));
+        }
+        
         uint _total = _value;
         uint _fee = calculateFee(_feeFromValue).add(_additionalFee);
         address _feeAddress = getFeeAddress();
@@ -206,6 +235,10 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
             _addBalance(_change, _changeAmount);
             _emitTransferred(_from, _change, _changeAmount);
             _total = _total.add(_changeAmount);
+            
+            if (_shouldWithdraw) {
+                require(OK == _withdraw(_change, _changeAmount));
+            }
         }
 
         _subBalance(_from, _total);
@@ -320,19 +353,19 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     }
 
     function emitFeeSet(uint _feePercent) public {
-        FeeSet(_self(), _feePercent);
+        emit FeeSet(_self(), _feePercent);
     }
 
     function emitDeposited(address _by, uint _value) public {
-        Deposited(_self(), _by, _value);
+        emit Deposited(_self(), _by, _value);
     }
 
     function emitWithdrawn(address _by, uint _value) public {
-        Withdrawn(_self(), _by, _value);
+        emit Withdrawn(_self(), _by, _value);
     }
 
     function emitTransferred(address _from, address _to, uint _value) public {
-        Transferred(_self(), _from, _to, _value);
+        emit Transferred(_self(), _from, _to, _value);
     }
 
 }

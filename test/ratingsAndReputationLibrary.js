@@ -10,16 +10,13 @@ const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const Storage = artifacts.require('./Storage.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
-const UserLibraryMock = artifacts.require('./UserLibraryMock.sol');
 const UserFactory = artifacts.require('./UserFactory.sol');
 const BoardController = artifacts.require('./BoardController.sol');
 
 const BalanceHolder = artifacts.require('./BalanceHolder.sol');
 const PaymentProcessor = artifacts.require('./PaymentProcessor.sol');
 
-
 const Asserts = require('./helpers/asserts');
-const Promise = require('bluebird');
 const Reverter = require('./helpers/reverter');
 const eventsHelper = require('./helpers/eventsHelper');
 const helpers = require('./helpers/helpers')
@@ -35,8 +32,6 @@ contract('RatingsAndReputationLibrary', function(accounts) {
   const worker = accounts[2];
 
   const boardId = 1;
-  const boardName = 'Name';
-  const boardDescription = 'Description';
   const boardTags = 1;
   const boardArea = 1;
   const boardCategory = 1;
@@ -60,15 +55,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
 
   const JOB_STATES = {
     NOT_SET: 0, 
-    CREATED: 1, 
-    OFFER_ACCEPTED: 2, 
-    PENDING_START: 3, 
-    STARTED: 4, 
-    PENDING_FINISH: 5, 
-    FINISHED: 6, 
-    WORK_ACCEPTED: 7, 
-    WORK_REJECTED: 8, 
-    FINALIZED: 9,
+    CREATED: 2**0, 
+    OFFER_ACCEPTED: 2**1, 
+    PENDING_START: 2**2, 
+    STARTED: 2**3, 
+    PENDING_FINISH: 2**4, 
+    FINISHED: 2**5, 
+    WORK_ACCEPTED: 2**6, 
+    WORK_REJECTED: 2**7, 
+    FINALIZED: 2**8,
   }
 
   let FINALIZED_JOB;
@@ -80,23 +75,18 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     return a.valueOf() === b.valueOf();
   };
 
-  const p = (...data) => {
-    console.log(...data);
-  }
-
   const setupJob = (_jobArea, _jobCategory, _jobSkills, _client=client, _worker=worker) => {
     let jobId;
     const jobArea = helpers.getFlag(_jobArea);
     const jobCategory = helpers.getFlag(_jobCategory);
     const jobSkills = _jobSkills;  // uint
 
-    const roles = [];
-    const recovery = "0xffffffffffffffffffffffffffffffffffffffff";
+    const use2FA = false;
 
     return Promise.resolve()
-    .then(() => userFactory.createUserWithProxyAndRecovery(
-      _worker, recovery, roles, jobArea, [jobCategory], [jobSkills]
-    ))
+    .then(() => ignoreSkillsCheck(true))
+    .then(() => userFactory.createUserWithProxyAndRecovery(_worker, use2FA))
+    // .then(() => userLibrary.setMany(_worker, jobArea, [jobCategory], [jobSkills], { from: accounts[0], }))
     .then(() => jobController.postJob(
       jobFlow, jobArea, jobCategory, jobSkills, 4 /* default pay size */, "Job details", {from: _client}
     ))
@@ -108,6 +98,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const payment = await jobController.calculateLockAmountFor.call(_worker, jobId)
       return await jobController.acceptOffer(jobId, _worker, { from: _client, value: payment, })
     })
+    .then(() => ignoreSkillsCheck(false))
     .then(() => jobId);
   }
 
@@ -123,6 +114,9 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(() => jobId);
   }
 
+  const ignoreSkillsCheck = (enabled = true) => {
+    return mock.ignore(userLibrary.hasSkills.getData(0,0,0,0).slice(0, 10), enabled);
+  }
 
   before('setup', () => {
     return Mock.deployed()
@@ -147,23 +141,22 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(instance => ratingsLibrary = instance)
     .then(() => BoardController.deployed())
     .then(instance => boardController = instance)
-
+    
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
     .then(() => paymentProcessor.setPaymentGateway(paymentGateway.address))
-
-    .then(() => userFactory.setUserLibrary(UserLibraryMock.address))
+    
+    // .then(() => userFactory.setUserLibrary(UserLibraryMock.address))
     .then(() => jobController.setUserLibrary(mock.address))
     .then(() => jobController.setPaymentProcessor(paymentProcessor.address))
     .then(() => jobController.setBoardController(boardController.address))
-
+    
     .then(() => ratingsLibrary.setJobController(jobsDataProvider.address))
     .then(() => ratingsLibrary.setUserLibrary(mock.address))
     .then(() => ratingsLibrary.setBoardController(boardController.address))
-
     .then(() => setupJob(0, 0, 7))
     .then(jobId => finishJob(jobId))  // jobId#1, to test finished jobs
     .then(jobId => FINALIZED_JOB = jobId.toNumber())
-
+    
     .then(() => setupJob(0, 0, 7))  // jobId#2, to test canceled jobs
     .then(jobId => NOT_FINALIZED_JOB = jobId.toNumber())
 
@@ -243,14 +236,13 @@ contract('RatingsAndReputationLibrary', function(accounts) {
 
   describe('User rating', () => {
 
-    it('should NOT be able to set invalid user rating', () => {
+    it('should NOT be able to set invalid user rating', async () => {
       const ratings = [-1, 0, 11, 100500];
       const address = '0xffffffffffffffffffffffffffffffffffffffff';
-      return Promise.each(ratings, rating => {
-        return ratingsLibrary.setUserRating(address, rating, {from: SENDER})
-        .then(() => ratingsLibrary.getUserRating(SENDER, address))
-        .then(asserts.equal(0));
-      });
+      for (const rating of ratings) {
+        await ratingsLibrary.setUserRating(address, rating, {from: SENDER})
+        assert.equal((await ratingsLibrary.getUserRating(SENDER, address)).toNumber(), 0)
+      }
     });
 
     it('should have "RATING_AND_REPUTATION_INVALID_RATING" code when invalid user rating set', () => {
@@ -352,28 +344,27 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       });
     });
 
-    it('should set user rating from multiple accounts', () => {
+    it('should set user rating from multiple accounts', async () => {
       const raters = accounts.slice(1, 4);
       const rating = 5;
       const address = '0xffffffffffffffffffffffffffffffffffffffff';
-      return Promise.each(raters, r => {
-        return ratingsLibrary.setUserRating(address, rating, {from: r})
-        .then(() => ratingsLibrary.getUserRating(r, address))
-        .then(asserts.equal(5));
-      });
+
+      for (const r of raters) {
+        await ratingsLibrary.setUserRating(address, rating, {from: r})
+        assert.equal((await ratingsLibrary.getUserRating(r, address)).toNumber(), rating)
+      }
     });
 
   });
 
   describe('Board rating', () => {
 
-    it('should NOT be able to set invalid board rating', () => {
+    it('should NOT be able to set invalid board rating', async () => {
       const ratings = [-1, 0, 11, 100500];
-      return Promise.each(ratings, rating => {
-        return ratingsLibrary.setBoardRating(boardId, rating, {from: SENDER})
-        .then(() => ratingsLibrary.getBoardRating(SENDER, boardId))
-        .then(asserts.equal(0));
-      });
+      for (const rating of ratings) {
+        await ratingsLibrary.setBoardRating(boardId, rating, {from: SENDER})
+        assert.equal((await ratingsLibrary.getBoardRating(SENDER, boardId)).toNumber(), 0)
+      }
     });
 
     it('should have "BoardRatingGiven" event when invalid board rating set', () => {
@@ -477,26 +468,25 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       });
     });
 
-    it('should set board rating from multiple accounts', () => {
+    it('should set board rating from multiple accounts', async () => {
       const raters = accounts.slice(1, 4);
       const rating = 5;
-      return Promise.each(raters, r => {
-        return boardController.bindUserWithBoard(boardId, r)
-        .then(() => ratingsLibrary.setBoardRating(boardId, rating, {from: r}))
-        .then(() => ratingsLibrary.getBoardRating(r, boardId))
-        .then(asserts.equal(5));
-      });
+      for (const r of raters) {
+        await boardController.bindUserWithBoard(boardId, r)
+        await ratingsLibrary.setBoardRating(boardId, rating, {from: r})
+        assert.equal((await ratingsLibrary.getBoardRating(r, boardId)).toNumber(), rating)
+      }
     });
 
   });
 
   describe('Job rating', () => {
 
-    it('should NOT set invalid job rating', () => {
+    it('should NOT set invalid job rating', async () => {
       const ratings = [-1, 0, 11, 100500];
       const jobId = FINALIZED_JOB;
-      return Promise.each(ratings, rating => {
-        return Promise.resolve()
+      for (const rating of ratings) {
+        await Promise.resolve()
         .then(() => ratingsLibrary.setJobRating.call(worker, rating, jobId, {from: client}))
         .then(code => assert.equal(code.toNumber(), ErrorsNamespace.RATING_AND_REPUTATION_INVALID_RATING))
         .then(() => ratingsLibrary.setJobRating(worker, rating, jobId, {from: client}))
@@ -509,8 +499,8 @@ contract('RatingsAndReputationLibrary', function(accounts) {
           assert.equal(tx[1], 0);
           assert.equal(tx[0], 0);
         })
-        .then(() => helpers.assertExpectations(mock));
-      })
+        .then(() => helpers.assertExpectations(mock)); 
+      }
     });
 
     it("should NOT allow to rate a job if it's not at FINALIZED state", () => {
@@ -720,71 +710,66 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => jobsDataProvider.getJobState(jobId))
       .then(asserts.equal(JOB_STATES.FINISHED))  // Ensure all previous stage changes was successful
       .then(() => call(...args))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
-    });
-
-    it('should NOT allow to rate worker skills not from job client', () => {
-      const jobId = FINALIZED_JOB;
-      const area = helpers.getFlag(0);
-      const category = helpers.getFlag(0);
-      const skills = [1, 2, 4];
-      const ratings = [3, 7, 9];
-      return Promise.resolve()
-      .then(() => Promise.each(accounts.slice(2), account => {
-        return ratingsLibrary.rateWorkerSkills(
-          jobId, worker, area, category, skills, ratings, {from: account}
-        )
-        .then(() => Promise.each(skills, skill => {
-          return ratingsLibrary.getSkillRating(
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
             worker, area, category, skill, jobId
           )
-          .then(tx => {
-            assert.equal(tx[0], 0);
-            assert.equal(tx[1], 0);
-          });
-        }));
-      }));
+          assert.equal(who, 0);
+          assert.equal(rating, 0);  
+        }
+      })
     });
 
-    it('should NOT allow to rate worker skills not for job worker', () => {
+    it('should NOT allow to rate worker skills not from job client', async () => {
       const jobId = FINALIZED_JOB;
       const area = helpers.getFlag(0);
       const category = helpers.getFlag(0);
       const skills = [1, 2, 4];
       const ratings = [3, 7, 9];
-      return Promise.resolve()
-      .then(() => Promise.each(accounts.slice(3), account => {
-        return ratingsLibrary.rateWorkerSkills(
+      
+      for (const account of accounts.slice(2)) {
+        await ratingsLibrary.rateWorkerSkills(
+          jobId, worker, area, category, skills, ratings, {from: account}
+        )
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      }
+    });
+
+    it('should NOT allow to rate worker skills not for job worker', async () => {
+      const jobId = FINALIZED_JOB;
+      const area = helpers.getFlag(0);
+      const category = helpers.getFlag(0);
+      const skills = [1, 2, 4];
+      const ratings = [3, 7, 9];
+
+      for (const account of accounts.slice(3)) {
+        await ratingsLibrary.rateWorkerSkills(
           jobId, account, area, category, skills, ratings, {from: client}
         )
-        .then(() => Promise.each(skills, skill => {
-          return ratingsLibrary.getSkillRating(
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
             account, area, category, skill, jobId
           )
-          .then(tx => {
-            assert.equal(tx[0], 0);
-            assert.equal(tx[1], 0);
-          });
-        }));
-      }))
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      }
+      
       // Ensure actual worker doesn't have skills rated
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
+      for (const skill of skills) {
+        const [ who, rating, ] = await ratingsLibrary.getSkillRating(
           worker, area, category, skill, jobId
         )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+        assert.equal(who, 0);
+        assert.equal(rating, 0);
+      }
     });
 
     it('should NOT allow to rate worker skills if a job was canceled on OFFER_ACCEPTED state', () => {
@@ -802,15 +787,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT allow to rate worker skills if a job was canceled on PENDING START state', () => {
@@ -829,15 +814,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT allow to set skills if they are already set', () => {
@@ -850,15 +835,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, (skill, i) => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], client);
-          assert.equal(tx[1], ratings[i]);
-        });
-      }))
+      .then(async () => {
+        for (var i = 0; i < skills.length; ++i) {
+          const skill = skills[i]
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, client);
+          assert.equal(rating, ratings[i]);
+        }
+      })
       .then(() => ratingsLibrary.rateWorkerSkills.call(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
@@ -879,15 +865,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, (skill, i) => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], client);
-          assert.equal(tx[1], ratings[i]);
-        });
-      }));
+      .then(async () => {
+        for (var i = 0; i < skills.length; ++i) {
+          const skill = skills[i]
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, client);
+          assert.equal(rating, ratings[i]);
+        }
+      })
     });
 
     it('should NOT rate worker skills with even flag job area', () => {
@@ -900,15 +887,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT rate worker skills with multi-flag job area', () => {
@@ -921,15 +908,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT rate worker skills with area that is unrelated to the given job', () => {
@@ -942,15 +929,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT rate worker skills with even flag job category', () => {
@@ -963,15 +950,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT rate worker skills with multi-flag job category', () => {
@@ -984,15 +971,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT rate worker skills with category that is unrelated to the given job', () => {
@@ -1005,15 +992,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT rate worker skills with multi-flag skill', () => {
@@ -1026,15 +1013,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => asserts.throws(ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       )))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT rate worker skills with skill that is not unrelated to the given job', () => {
@@ -1047,15 +1034,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => asserts.throws(ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       )))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT set skill ratings that are more than 10', () => {
@@ -1068,15 +1055,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => asserts.throws(ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       )))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
     it('should NOT set skill ratings that are less than 1', () => {
@@ -1089,15 +1076,15 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => asserts.throws(ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       )))
-      .then(() => Promise.each(skills, skill => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], 0);
-          assert.equal(tx[1], 0);
-        });
-      }));
+      .then(async () => {
+        for (const skill of skills) {
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, 0);
+          assert.equal(rating, 0);
+        }
+      })
     });
 
 
@@ -1111,15 +1098,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, (skill, i) => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], client);
-          assert.equal(tx[1], ratings[i]);
-        });
-      }));
+      .then(async () => {
+        for (var i = 0; i < skills.length; ++i) {
+          const skill = skills[i]
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, client);
+          assert.equal(rating, ratings[i]);
+        }
+      })
     });
 
     it('should allow to rate worker skills on canceled job if it ended up with STARTED state', () => {
@@ -1139,15 +1127,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, (skill, i) => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], client);
-          assert.equal(tx[1], ratings[i]);
-        });
-      }));
+      .then(async () => {
+        for (var i = 0; i < skills.length; ++i) {
+          const skill = skills[i]
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, client);
+          assert.equal(rating, ratings[i]);
+        }
+      })
     });
 
     it('should allow to rate worker skills on canceled job if it ended up with PENDING_FINISH state', () => {
@@ -1168,15 +1157,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => ratingsLibrary.rateWorkerSkills(
         jobId, worker, area, category, skills, ratings, {from: client}
       ))
-      .then(() => Promise.each(skills, (skill, i) => {
-        return ratingsLibrary.getSkillRating(
-          worker, area, category, skill, jobId
-        )
-        .then(tx => {
-          assert.equal(tx[0], client);
-          assert.equal(tx[1], ratings[i]);
-        });
-      }));
+      .then(async () => {
+        for (var i = 0; i < skills.length; ++i) {
+          const skill = skills[i]
+          const [ who, rating, ] = await ratingsLibrary.getSkillRating(
+            worker, area, category, skill, jobId
+          )
+          assert.equal(who, client);
+          assert.equal(rating, ratings[i]);
+        }
+      })
     });
 
     it('should emit "SkillRatingGiven" event on rate worker skills with valid parameters', () => {
@@ -1192,7 +1182,8 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(tx => eventsHelper.extractEvents(tx, "SkillRatingGiven"))
       .then(events => {
         assert.equal(events.length, 3);
-        return Promise.each(skills, (skill, i) => {
+
+        for (var i = 0; i < skills.length; ++i) {
           assert.equal(events[i].event, "SkillRatingGiven");
           assert.equal(events[i].args.jobId, jobId);
           assert.equal(events[i].args.rater, client);
@@ -1200,8 +1191,8 @@ contract('RatingsAndReputationLibrary', function(accounts) {
           assert.equal(events[i].args.area.toString(), area.toString());
           assert.equal(events[i].args.category.toString(), category.toString());
           assert.equal(events[i].args.skill.toString(), skills[i].toString());
-          assert.equal(events[i].args.rating, ratings[i]);
-        });
+          assert.equal(events[i].args.rating, ratings[i]);         
+        }
       });
     });
 
@@ -1345,6 +1336,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateArea.getData(0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area),  true))
       .then(() => ratingsLibrary.evaluateArea(worker, rating, area, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "AreaEvaluated"))
@@ -1361,6 +1362,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateCategory.getData(0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
       .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "CategoryEvaluated"))
@@ -1378,6 +1389,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateSkill.getData(0,0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
       .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "SkillEvaluated"))
@@ -1393,6 +1414,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateArea.getData(0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area),  false))
       .then(() => ratingsLibrary.evaluateArea(worker, rating, area, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "AreaEvaluated"))
@@ -1409,6 +1440,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateCategory.getData(0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  false))
       .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "CategoryEvaluated"))
@@ -1426,6 +1467,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateSkill.getData(0,0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  false))
       .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "SkillEvaluated"))
@@ -1442,6 +1493,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateArea.getData(0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker, area), true))
       .then(() => ratingsLibrary.evaluateArea(worker, rating, area, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "AreaEvaluated"))
@@ -1467,6 +1528,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateCategory.getData(0,0,0,0).slice(0,10)
+        ),
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
       .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "CategoryEvaluated"))
@@ -1494,6 +1565,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateSkill.getData(0,0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
       .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
       .then(tx => eventsHelper.extractEvents(tx, "SkillEvaluated"))
@@ -1526,8 +1607,28 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker2 = '0xeeeeeeee22eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator1,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateArea.getData(0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker1, area1),  true))
       .then(() => ratingsLibrary.evaluateArea(worker1, rating1, area1, {from: evaluator1}))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator2,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateArea.getData(0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasArea.getData(worker2, area2),  true))
       .then(() => ratingsLibrary.evaluateArea(worker2, rating2, area2, {from: evaluator2}))
       .then(() => ratingsLibrary.getAreaEvaluation(worker1, area1, evaluator1))
@@ -1550,8 +1651,28 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker2 = '0xeeeeeeee22eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator1,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateCategory.getData(0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker1, area1, category1),  true))
       .then(() => ratingsLibrary.evaluateCategory(worker1, rating1, area1, category1, {from: evaluator1}))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator2,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateCategory.getData(0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker2, area2, category2),  true))
       .then(() => ratingsLibrary.evaluateCategory(worker2, rating2, area2, category2, {from: evaluator2}))
       .then(() => ratingsLibrary.getCategoryEvaluation(worker1, area1, category1, evaluator1))
@@ -1576,8 +1697,28 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker2 = '0xeeeeeeee22eeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator1,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateSkill.getData(0,0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker1, area1, category1, skill1),  true))
       .then(() => ratingsLibrary.evaluateSkill(worker1, rating1, area1, category1, skill1, {from: evaluator1}))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator2,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateSkill.getData(0,0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker2, area2, category2, skill2),  true))
       .then(() => ratingsLibrary.evaluateSkill(worker2, rating2, area2, category2, skill2, {from: evaluator2}))
       .then(() => ratingsLibrary.getSkillEvaluation(worker1, area1, category1, skill1, evaluator1))
@@ -1595,6 +1736,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateCategory.getData(0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, area, category),  true))
       .then(() => ratingsLibrary.evaluateCategory(worker, rating, area, category, {from: evaluator}))
       .then(() => ratingsLibrary.getCategoryEvaluation(worker, area, category, evaluator))
@@ -1612,6 +1763,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const worker = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          evaluator,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateSkill.getData(0,0,0,0,0).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, area, category, skill),  true))
       .then(() => ratingsLibrary.evaluateSkill(worker, rating, area, category, skill, {from: evaluator}))
       .then(() => ratingsLibrary.getSkillEvaluation(worker, area, category, skill, evaluator))
@@ -1631,6 +1792,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const ratings = [9, 8, 7, 6, 5];
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          client,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateMany.getData(0,0,[],[],[]).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(7), helpers.getFlag(9)),  true))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, helpers.getFlag(4), helpers.getFlag(9)),  true))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(10), helpers.getFlag(12)),  true))
@@ -1657,6 +1828,16 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       const ratings = [9, 8, 7, 6, 5];
       return Promise.resolve()
       .then(() => ratingsLibrary.setRoles2Library(Mock.address))
+      .then(async () => mock.expect(
+        ratingsLibrary.address, 
+        0, 
+        roles2LibraryInterface.canCall.getData(
+          client,
+          ratingsLibrary.address,
+          ratingsLibrary.contract.evaluateMany.getData(0,0,[],[],[]).slice(0,10)
+        ),  
+        await mock.convertUIntToBytes32.call(ErrorsNamespace.OK))
+      )
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(7), helpers.getFlag(9)),  true))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasCategory.getData(worker, helpers.getFlag(4), helpers.getFlag(9)),  true))
       .then(() => mock.expect(ratingsLibrary.address, 0, userLibrary.hasSkill.getData(worker, helpers.getFlag(4), helpers.getFlag(10), helpers.getFlag(12)),  true))

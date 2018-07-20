@@ -3,13 +3,13 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 
-import './adapters/MultiEventsHistoryAdapter.sol';
-import './adapters/Roles2LibraryAdapter.sol';
-import './adapters/StorageAdapter.sol';
-import './base/BitOps.sol';
+import "solidity-storage-lib/contracts/StorageAdapter.sol";
+import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
+import "solidity-eventshistory-lib/contracts/MultiEventsHistoryAdapter.sol";
+import "./base/BitOps.sol";
 
 
 /**
@@ -60,8 +60,31 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     StorageInterface.AddressUIntMapping skillAreas;
     StorageInterface.AddressUIntUIntMapping skillCategories;
     StorageInterface.AddressUIntUIntUIntMapping skills;
+    StorageInterface.AddressesSet users;
 
-    function UserLibrary(
+    string public version = "v0.0.1";
+
+    modifier onlyValidArea(uint _value) {
+        if (!_isValidAreaOrCategory(_value)) {
+            assembly {
+                mstore(0, 21001) // USER_LIBRARY_INVALID_AREA
+                return(0, 32)
+            }
+        }
+        _;
+    }
+
+    modifier onlyValidCategory(uint _value) {
+        if (!_isValidAreaOrCategory(_value)) {
+            assembly {
+                mstore(0, 21002) // USER_LIBRARY_INVALID_CATEGORY
+                return(0, 32)
+            }
+        }
+        _;
+    }
+
+    constructor(
         Storage _store, 
         bytes32 _crate, 
         address _roles2Library
@@ -70,9 +93,10 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     Roles2LibraryAdapter(_roles2Library)
     public
     {
-        skillAreas.init('skillAreas');
-        skillCategories.init('skillCategories');
-        skills.init('skills');
+        skillAreas.init("skillAreas");
+        skillCategories.init("skillCategories");
+        skills.init("skills");
+        users.init("users");
     }
 
     function setupEventsHistory(address _eventsHistory) auth external returns (uint) {
@@ -103,7 +127,9 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     public view
     returns (bool partialCategory, bool fullCategory) 
     {
-        var (partialArea, fullArea) = getAreaInfo(_user, _area);
+        bool partialArea;
+        bool fullArea;
+        (partialArea, fullArea) = getAreaInfo(_user, _area);
         if (!partialArea) {
             return (false, false);
         }
@@ -141,7 +167,9 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     public view 
     returns (bool) 
     {
-        var (partialCategory, fullCategory) = getCategoryInfo(_user, _area, _category);
+        bool partialCategory;
+        bool fullCategory;
+        (partialCategory, fullCategory) = getCategoryInfo(_user, _area, _category);
         if (!partialCategory) {
             return false;
         }
@@ -182,6 +210,200 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
                 _skills[skillsPointer++] = store.get(skills, _user, area, category);
             }
         }
+    }
+
+    function getUsersCount() public view returns (uint) {
+        return store.count(users);
+    }
+
+    /// @notice Gets a number of users that fulfill all requirements: area, all categories and masked skills.
+    /// (similar to AND search)
+    /// @param _area single area to query
+    /// @param _categories list of categories that should be included in provided area
+    /// @param _skills list of skills for each provided categories
+    /// @param _fromIdx pagination param; should be 0 at the beginning, then the latest userIdx that comes from return
+    /// @param _maxLen pagination param; could be getUsersCount() number
+    /// @return {
+    ///     "_count": "amount of found users by provided criterias",
+    ///     "_userIdx": user index where query has stopped, pass to the next query
+    /// }
+    function getStrictUsersByAreaCount(
+        uint _area, 
+        uint[] _categories,
+        uint[] _skills,
+        uint _fromIdx,
+        uint _maxLen
+    ) 
+    public 
+    view 
+    returns (uint _count, uint _userIdx) 
+    {
+        return _getUsersByAreaCount(
+            _area,
+            _categories,
+            _skills,
+            _fromIdx,
+            _maxLen,
+            _hasStrictSubsequenceOfSkillsInArea
+        );
+    }
+
+    /// @notice Gets a number of users that fulfill any requirements: area, any category and masked skills.
+    /// (similar to OR search)
+    /// @param _area single area to query
+    /// @param _categories list of categories that could be included in provided area
+    /// @param _skills list of skills for each provided categories
+    /// @param _fromIdx pagination param; should be 0 at the beginning, then the latest userIdx that comes from return
+    /// @param _maxLen pagination param; could be getUsersCount() number
+    /// @return {
+    ///     "_count": "amount of found users by provided criterias",
+    ///     "_userIdx": user index where query has stopped, pass to the next query
+    /// }
+    function getUsersByAreaCount(
+        uint _area, 
+        uint[] _categories,
+        uint[] _skills,
+        uint _fromIdx,
+        uint _maxLen
+    )
+    public 
+    view 
+    returns (uint _count, uint _userIdx) 
+    {
+        return _getUsersByAreaCount(
+            _area,
+            _categories,
+            _skills,
+            _fromIdx,
+            _maxLen,
+            _hasAnySubsequenceOfSkillsInArea
+        );
+    }
+
+    function _getUsersByAreaCount(
+        uint _area, 
+        uint[] _categories,
+        uint[] _skills,
+        uint _fromIdx,
+        uint _maxLen,
+        function(address, uint, uint[] memory, uint[] memory) internal view returns (bool) _hasSubsequeceOfSkills
+    )
+    onlyValidArea(_area)
+    private
+    view 
+    returns (uint _count, uint _userIdx)
+    {
+        require(_categories.length == _skills.length);
+
+        uint _usersCount = getUsersCount();
+        require(_fromIdx < _usersCount);
+
+        _maxLen = (_fromIdx + _maxLen <= _usersCount) ? _maxLen : (_usersCount - _fromIdx);
+
+        for (_userIdx = _fromIdx; _userIdx < _fromIdx + _maxLen; _userIdx++) {
+            if (gasleft() < 100000) {
+                return (_count, _userIdx);
+            }
+
+            address _user = store.get(users, _userIdx);
+            
+            uint _userAreas = store.get(skillAreas, _user);
+            _userAreas = _userAreas & _getAreaOrCategoryBits(_area);
+
+            // NOTE: user has less covered areas than input (10 - user, 11 - input)
+            if (!_hasFlags(_userAreas, _area)) { 
+                continue;
+            }
+
+            // NOTE: user has all categories for this area and we can count '+1'
+            if (!_isSingleFlag(_userAreas)) { 
+                _count += 1;
+                continue;
+            }
+
+            // NOTE: all skills and categories should fit, otherwise skip this user
+            if (!_hasSubsequeceOfSkills(_user, _userAreas, _categories, _skills)) {
+                continue;
+            }
+
+            _count += 1;
+        }
+    }
+
+    function _hasStrictSubsequenceOfSkillsInArea(
+        address _user, 
+        uint _area, 
+        uint[] _categories, 
+        uint[] _skills
+    ) 
+    internal 
+    view 
+    returns (bool) 
+    {
+        uint _userCategories = store.get(skillCategories, _user, _area);
+        for (uint _categoryIdx = 0; _categoryIdx < _categories.length; ++_categoryIdx) {
+            uint _category = _categories[_categoryIdx];
+            require(_isValidAreaOrCategory(_category));
+            
+            uint _userCategory = _userCategories & _getAreaOrCategoryBits(_category);
+
+            // NOTE: user has less covered categories than input (10 - user, 11 - input)
+            if (!_hasFlags(_userCategory, _category)) { 
+                return false;
+            }
+
+            // NOTE: user has all skills in this category and we can count '+1'
+            if (!_isSingleFlag(_userCategory)) { 
+                continue;
+            }
+            
+            // NOTE: skills could be passed as 111111 mask to get categories with any skills
+            if (!_hasFlags(_skills[_categoryIdx], store.get(skills, _user, _area, _category))) { 
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    function _hasAnySubsequenceOfSkillsInArea(
+        address _user, 
+        uint _area, 
+        uint[] _categories, 
+        uint[] _skills
+    ) 
+    internal 
+    view 
+    returns (bool) 
+    {
+        if (_categories.length == 0) {
+            return true;
+        }
+
+        uint _userCategories = store.get(skillCategories, _user, _area);
+        for (uint _categoryIdx = 0; _categoryIdx < _categories.length; ++_categoryIdx) {
+            uint _category = _categories[_categoryIdx];
+            require(_isValidAreaOrCategory(_category));
+            
+            uint _userCategory = _userCategories & _getAreaOrCategoryBits(_category);
+
+            // NOTE: allow to have another check if a category doesn't fit
+            if (!_hasFlags(_userCategory, _category)) { 
+                continue;
+            }
+
+            // NOTE: user has all skills in this category and we can count '+1'
+            if (!_isSingleFlag(_userCategory)) { 
+                return true;
+            }
+            
+            // NOTE: skills could pass at least one check to be successfull
+            if (_hasFlags(_skills[_categoryIdx], store.get(skills, _user, _area, _category))) { 
+                return true;
+            }
+        }
+
+        return false;
     }
 
     function setAreas(
@@ -314,6 +536,7 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
         if (hasArea(_user, _area)) {
             return;
         }
+
         _setAreas(_user, store.get(skillAreas, _user) | _area);
     }
 
@@ -325,18 +548,33 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     }
 
     function _setAreas(address _user, uint _areas) internal {
+        store.add(users, _user);
         store.set(skillAreas, _user, _areas);
         _emitSkillAreasSet(_user, _areas);
     }
 
     function _setCategories(address _user, uint _area, uint _categories) internal {
+        store.add(users, _user);
         store.set(skillCategories, _user, _area, _categories);
         _emitSkillCategoriesSet(_user, _area, _categories);
     }
 
     function _setSkills(address _user, uint _area, uint _category, uint _skills) internal {
+        store.add(users, _user);
         store.set(skills, _user, _area, _category, _skills);
         _emitSkillsSet(_user, _area, _category, _skills);
+    }
+
+    function _isValidAreaOrCategory(uint _value) private pure returns (bool) {
+        if ((_isSingleFlag(_value) && _isOddFlag(_value)) ||
+            (_ifEvenThenOddTooFlags(_value))
+        ) {
+            return true;
+        }
+    }
+
+    function _getAreaOrCategoryBits(uint _value) private pure returns (uint) {
+        return _isSingleFlag(_value) ? (_value | (_value << 1)) : _value; 
     }
 
     function _emitSkillAreasSet(address _user, uint _areas) internal {
@@ -352,15 +590,15 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     }
 
     function emitSkillAreasSet(address _user, uint _areas) public {
-        SkillAreasSet(_self(), _user, _areas);
+        emit SkillAreasSet(_self(), _user, _areas);
     }
 
     function emitSkillCategoriesSet(address _user, uint _area, uint _categories) public {
-        SkillCategoriesSet(_self(), _user, _area, _categories);
+        emit SkillCategoriesSet(_self(), _user, _area, _categories);
     }
 
     function emitSkillsSet(address _user, uint _area, uint _category, uint _skills) public {
-        SkillsSet(_self(), _user, _area, _category, _skills);
+        emit SkillsSet(_self(), _user, _area, _category, _skills);
     }
 
 }

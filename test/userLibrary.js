@@ -15,7 +15,6 @@ const helpers = require('./helpers/helpers');
 
 contract('UserLibrary', function(accounts) {
   const reverter = new Reverter(web3);
-  afterEach('revert', reverter.revert);
 
   const asserts = Asserts(assert);
   let storage;
@@ -25,6 +24,40 @@ contract('UserLibrary', function(accounts) {
   let mock;
 
   const FROM_NON_OWNER = { from: accounts[5] };
+
+  const addFlags = (...flags) => {
+    if (flags.length == 1) {
+      return flags[0];
+    }
+    return addFlags(flags[0].add(flags[1]), ...flags.slice(2));
+  };
+
+  const partialFlag = helpers.getFlag;
+  const fullFlag = helpers.getEvenFlag;
+  const allMask = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+  const partialAndFullFlag = index => partialFlag(index).add(fullFlag(index));
+
+  const equal = (a, b) => {
+    return a.valueOf() === b.valueOf();
+  };
+
+  const parseBigNumbers = bigs => bigs.map(big => big.toString()).filter(e => e !== '0');
+
+  const assertUserSkills = (user, expectedSkills) => {
+    let actualSkills;
+    let expSkills;
+    return () =>
+      userLibrary.getUserSkills(user)
+      .then(([areas, categories, skills]) => {
+        actualSkills = [areas.toString(), parseBigNumbers(categories), parseBigNumbers(skills)];
+        expSkills = [expectedSkills[0].toString(), parseBigNumbers(expectedSkills[1]), parseBigNumbers(expectedSkills[2])];
+        assert.deepEqual(actualSkills, expSkills);
+      })
+      .catch(err => {
+        console.log('Actual skills:', actualSkills);
+        throw err;
+      });
+  };
 
   const assertExpectations = (expected = 0, callsCount = null) => {
     let expectationsCount;
@@ -52,58 +85,33 @@ contract('UserLibrary', function(accounts) {
     .then(reverter.snapshot);
   });
 
-  it('should check auth on setup event history', () => {
-    const caller = accounts[1];
-    const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
-    return Promise.resolve()
-    .then(() => userLibrary.setRoles2Library(Mock.address))
-    .then(() => mock.expect(
-      userLibrary.address,
-      0,
-      roles2LibraryInterface.canCall.getData(
-        caller,
+  describe("Pre-setup", () => {
+
+    afterEach('revert', reverter.revert);
+
+    it('should check auth on setup event history', () => {
+      const caller = accounts[1];
+      const newAddress = '0xffffffffffffffffffffffffffffffffffffffff';
+      return Promise.resolve()
+      .then(() => userLibrary.setRoles2Library(Mock.address))
+      .then(() => mock.expect(
         userLibrary.address,
-        userLibrary.contract.setupEventsHistory.getData(newAddress).slice(0, 10)
-      ), 0)
-    )
-    .then(() => userLibrary.setupEventsHistory(newAddress, {from: caller}))
-    .then(assertExpectations());
-  });
+        0,
+        roles2LibraryInterface.canCall.getData(
+          caller,
+          userLibrary.address,
+          userLibrary.contract.setupEventsHistory.getData(newAddress).slice(0, 10)
+        ), 0)
+      )
+      .then(() => userLibrary.setupEventsHistory(newAddress, {from: caller}))
+      .then(assertExpectations());
+    });
+  })
+
 
   describe('Skills', function() {
 
-    const addFlags = (...flags) => {
-      if (flags.length == 1) {
-        return flags[0];
-      }
-      return addFlags(flags[0].add(flags[1]), ...flags.slice(2));
-    };
-
-    const partialFlag = helpers.getFlag;
-    const fullFlag = helpers.getEvenFlag;
-    const partialAndFullFlag = index => partialFlag(index).add(fullFlag(index));
-
-    const equal = (a, b) => {
-      return a.valueOf() === b.valueOf();
-    };
-
-    const parseBigNumbers = bigs => bigs.map(big => big.toString()).filter(e => e !== '0');
-
-    const assertUserSkills = (user, expectedSkills) => {
-      let actualSkills;
-      let expSkills;
-      return () =>
-        userLibrary.getUserSkills(user)
-        .then(([areas, categories, skills]) => {
-          actualSkills = [areas.toString(), parseBigNumbers(categories), parseBigNumbers(skills)];
-          expSkills = [expectedSkills[0].toString(), parseBigNumbers(expectedSkills[1]), parseBigNumbers(expectedSkills[2])];
-          assert.deepEqual(actualSkills, expSkills);
-        })
-        .catch(err => {
-          console.log('Actual skills:', actualSkills);
-          throw err;
-        });
-    };
+    afterEach('revert', reverter.revert);
 
     describe('SetMany', function() {
       it('should check auth on calling setMany', () => {
@@ -1136,4 +1144,228 @@ contract('UserLibrary', function(accounts) {
 
     });
   });
+
+  describe('Statistics', () => {
+
+    const users = {
+      user1: accounts[1],
+      user2: accounts[2],
+      user3: accounts[3],
+      user4: accounts[4],
+    }
+
+    var usersCount
+
+    context("Case 1", () => {
+
+      after('revert', reverter.revert);
+
+      before(async () => {
+        const areas = [
+          addFlags(partialFlag(0), partialAndFullFlag(3),),
+          addFlags(partialAndFullFlag(0), partialAndFullFlag(2),),
+          addFlags(partialFlag(0), partialFlag(3),),
+        ]
+
+        const categories = [
+          addFlags(partialFlag(0), partialAndFullFlag(10)), 
+          addFlags(partialAndFullFlag(0), partialFlag(10)),
+          addFlags(partialFlag(0), partialFlag(10)),
+        ];
+        const skills = [
+          addFlags(helpers.getFlag(0), helpers.getFlag(10)), 
+          addFlags(helpers.getFlag(10), helpers.getEvenFlag(111)), 
+          addFlags(helpers.getEvenFlag(111)),
+        ];
+
+        await userLibrary.setMany(users.user1, areas[0], [categories[0]], [skills[0]])
+        await userLibrary.setMany(users.user2, areas[1], [], [])
+        await userLibrary.setMany(users.user3, areas[2], [categories[1], categories[2],], skills)
+
+        usersCount = await userLibrary.getUsersCount.call()
+      })
+
+      it("(strict) should have '0' users for [full 5th area]", async () => {
+        assert.equal(
+          (await userLibrary.getStrictUsersByAreaCount(
+            partialAndFullFlag(5),
+            [],
+            [],
+            0,
+            usersCount 
+          ))[0].toNumber(),
+          0
+        )
+      })
+
+      it("(strict) should have '1' user for [full 3d area]", async () => {
+        assert.equal(
+          (await userLibrary.getStrictUsersByAreaCount(
+            partialAndFullFlag(3),
+            [],
+            [],
+            0,
+            usersCount 
+          ))[0].toNumber(),
+          1
+        )
+      })
+
+      it("(strict) should have '3' users for [partial 0nd area]", async () => {
+        assert.equal(
+          (await userLibrary.getStrictUsersByAreaCount(
+            partialFlag(0),
+            [],
+            [],
+            0,
+            usersCount 
+          ))[0].toNumber(),
+          3
+        )
+      })
+
+      it("(strict) should have '2' users for [partial 3rd area]:[partial 0 category]:[any skills]", async () => {
+        assert.equal(
+          (await userLibrary.getStrictUsersByAreaCount(
+            partialFlag(3),
+            [partialFlag(0)],
+            [allMask],
+            0,
+            usersCount 
+          ))[0].toNumber(),
+          2
+        )
+      })
+
+      it("(strict) should have '2' users for [partial 3rd area]:[partial 0 category]:[2**10 + 2*111 skills]", async () => {
+        assert.equal(
+          (await userLibrary.getStrictUsersByAreaCount(
+            partialFlag(3),
+            [partialFlag(0)],
+            [addFlags(helpers.getFlag(10), helpers.getEvenFlag(111))],
+            0,
+            usersCount 
+          ))[0].toNumber(),
+          2
+        )
+      })
+
+      it("(strict) should have '1' user for [partial 3rd area]:[partial 0 category]:[2**10 + 2*112 skills]", async () => {
+        assert.equal(
+          (await userLibrary.getStrictUsersByAreaCount(
+            partialFlag(3),
+            [partialFlag(0)],
+            [addFlags(helpers.getFlag(10), helpers.getEvenFlag(112))],
+            0,
+            usersCount 
+          ))[0].toNumber(),
+          1
+        )
+      })
+
+      it("(strict) should have '2' user for [partial 3rd area]:[partial 0 category and partial 10 category]:[any skills]", async () => {
+        assert.equal(
+          (await userLibrary.getStrictUsersByAreaCount(
+            partialFlag(0),
+            [partialAndFullFlag(0), partialFlag(10),],
+            [allMask, allMask],
+            0,
+            usersCount 
+          ))[0].toNumber(),
+          2
+        )
+      })
+
+      it("(any) should have '0' users for [full 5th area]", async () => {
+        assert.equal(
+          (await userLibrary.getUsersByAreaCount(
+            partialAndFullFlag(5),
+            [],
+            [],
+            0,
+            usersCount 
+          ))[0].toNumber(),
+          0
+        )
+      })
+
+      it("(any) should have '1' user for [full 3rd area]", async () => {
+        assert.equal(
+          (await userLibrary.getUsersByAreaCount(
+            partialAndFullFlag(3),
+            [],
+            [],
+            0,
+            usersCount 
+          ))[0].toNumber(),
+          1
+        )
+      })
+
+      it("(any) should have '3' users for [partial 0nd area]", async () => {
+        assert.equal(
+          (await userLibrary.getUsersByAreaCount(
+            partialFlag(0),
+            [],
+            [],
+            0,
+            usersCount 
+          ))[0].toNumber(),
+          3
+        )
+      })
+
+      it("(any) should have '2' users for [partial 3rd area]:[partial 0 category]:[any skills]", async () => {
+        assert.equal(
+          (await userLibrary.getUsersByAreaCount(
+            partialFlag(3),
+            [partialFlag(0)],
+            [allMask],
+            0,
+            usersCount 
+          ))[0].toNumber(),
+          2
+        )
+      })
+
+      it("(any) should have '2' users for [partial 3rd area]:[partial 0 category]:[2**10 + 2*111 skills]", async () => {
+        assert.equal(
+          (await userLibrary.getUsersByAreaCount(
+            partialFlag(3),
+            [partialFlag(0)],
+            [addFlags(helpers.getFlag(10), helpers.getEvenFlag(111))],
+            0,
+            usersCount 
+          ))[0].toNumber(),
+          2
+        )
+      })
+
+      it("(any) should have '1' user for [partial 3rd area]:[partial 0 category]:[2**10 + 2*112 skills]", async () => {
+        assert.equal(
+          (await userLibrary.getUsersByAreaCount(
+            partialFlag(3),
+            [partialFlag(0)],
+            [addFlags(helpers.getFlag(10), helpers.getEvenFlag(112))],
+            0,
+            usersCount 
+          ))[0].toNumber(),
+          1
+        )
+      })
+
+      it("(any) should have '3' user for [partial 3rd area]:[partial 0 category or partial 10 category]:[any skills]", async () => {
+        assert.equal(
+          (await userLibrary.getUsersByAreaCount(
+            partialFlag(0),
+            [partialAndFullFlag(0), partialFlag(10),],
+            [allMask, allMask],
+            0,
+            usersCount 
+          ))[0].toNumber(),
+          3
+        )
+      })
+    })
+  })
 });

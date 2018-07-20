@@ -35,6 +35,10 @@ module.exports = deployer => {
         let sig = paymentGateway.contract.transferAll.getData(0,0,0,0,0,0).slice(0, 10);
         return rolesLibrary.addRoleCapability(PaymentProcessorRole, PaymentGateway.address, sig);
     })
+    .then(() => {
+        let sig = paymentGateway.contract.transferAllAndWithdraw.getData(0,0,0,0,0,0,0).slice(0, 10);
+        return rolesLibrary.addRoleCapability(PaymentProcessorRole, PaymentGateway.address, sig);
+    })
     .then(() => rolesLibrary.addUserRole(PaymentProcessor.address, PaymentProcessorRole))
     .then(() => console.log("[Migration] PaymentProcessor #initialized"))
 };

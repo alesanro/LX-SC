@@ -3,12 +3,12 @@
  * Licensed under the AGPL Version 3 license.
  */
 
-pragma solidity ^0.4.18;
+pragma solidity ^0.4.21;
 
 
-import "./adapters/MultiEventsHistoryAdapter.sol";
-import "./adapters/Roles2LibraryAdapter.sol";
-import "./adapters/StorageAdapter.sol";
+import "solidity-storage-lib/contracts/StorageAdapter.sol";
+import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
+import "solidity-eventshistory-lib/contracts/MultiEventsHistoryAdapter.sol";
 import "./base/BitOps.sol";
 import "./JobDataCore.sol";
 
@@ -20,7 +20,16 @@ contract UserLibraryInterface {
 
 contract PaymentProcessorInterface {
     function lockPayment(bytes32 _operationId, address _from) public payable returns (uint);
-    function releasePayment(bytes32 _operationId, address _to, uint _value, address _change, uint _feeFromValue, uint _additionalFee) public returns (uint);
+    function releasePayment(
+        bytes32 _operationId, 
+        address _to, 
+        uint _value, 
+        address _change, 
+        uint _feeFromValue, 
+        uint _additionalFee
+        ) 
+        public 
+        returns (uint);
 }
 
 
@@ -34,14 +43,23 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     uint constant JOB_CONTROLLER_WORK_IS_ALREADY_PAUSED = JOB_CONTROLLER_SCOPE + 5;
     uint constant JOB_CONTROLLER_WORK_IS_NOT_PAUSED = JOB_CONTROLLER_SCOPE + 6;
     uint constant JOB_CONTROLLER_INVALID_WORKFLOW_TYPE = JOB_CONTROLLER_SCOPE + 7;
+    uint constant JOB_CONTROLLER_INVALID_ROLE = JOB_CONTROLLER_SCOPE + 8;
+    uint constant JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED = JOB_CONTROLLER_SCOPE + 9;
+    uint constant JOB_CONTROLLER_INCORRECT_TIME_PROVIDED = JOB_CONTROLLER_SCOPE + 10;
+
 
     event JobPosted(address indexed self, uint indexed jobId, bytes32 flowType, address client, uint skillsArea, uint skillsCategory, uint skills, uint defaultPay, bytes32 detailsIPFSHash, bool bindStatus);
     event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint rate, uint estimate, uint ontop);
+    event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint price);
     event JobOfferAccepted(address indexed self, uint indexed jobId, address worker);
+    event StartWorkRequested(address indexed self, uint indexed jobId, uint at);
     event WorkStarted(address indexed self, uint indexed jobId, uint at);
-    event TimeAdded(address indexed self, uint indexed jobId, uint time);  // Additional `time` in minutes
+    event TimeRequestSubmitted(address indexed self, uint indexed jobId, uint time);  // Additional `time` in minutes
+    event TimeRequestAccepted(address indexed self, uint indexed jobId, uint time);
+    event TimeRequestRejected(address indexed self, uint indexed jobId, uint time);
     event WorkPaused(address indexed self, uint indexed jobId, uint at);
     event WorkResumed(address indexed self, uint indexed jobId, uint at);
+    event EndWorkRequested(address indexed self, uint indexed jobId, uint at);
     event WorkFinished(address indexed self, uint indexed jobId, uint at);
     event WorkAccepted(address indexed self, uint indexed jobId, uint at);
     event WorkRejected(address indexed self, uint indexed jobId, uint at);
@@ -54,27 +72,39 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
 
     modifier onlyClient(uint _jobId) {
         if (store.get(jobClient, _jobId) != msg.sender) {
-            return;
+            _emitErrorCode(JOB_CONTROLLER_INVALID_ROLE);
+            assembly {
+                mstore(0, 13008) // JOB_CONTROLLER_INVALID_ROLE
+                return(0, 32)
+            }
         }
         _;
     }
 
     modifier onlyWorker(uint _jobId) {
         if (store.get(jobWorker, _jobId) != msg.sender) {
-            return;
+            _emitErrorCode(JOB_CONTROLLER_INVALID_ROLE);
+            assembly {
+                mstore(0, 13008) // JOB_CONTROLLER_INVALID_ROLE
+                return(0, 32)
+            }
         }
         _;
     }
 
     modifier onlyNotClient(uint _jobId) {
         if (store.get(jobClient, _jobId) == msg.sender) {
-            return;
+            _emitErrorCode(JOB_CONTROLLER_INVALID_ROLE);
+            assembly {
+                mstore(0, 13008) // JOB_CONTROLLER_INVALID_ROLE
+                return(0, 32)
+            }
         }
         _;
     }
 
-    modifier onlyJobState(uint _jobId, JobState _jobState) {
-        if (store.get(jobState, _jobId) != uint(_jobState)) {
+    modifier onlyJobState(uint _jobId, uint _jobState) {
+        if (store.get(jobState, _jobId) != _jobState) {
             _emitErrorCode(JOB_CONTROLLER_INVALID_STATE);
             assembly {
                 mstore(0, 13003) // JOB_CONTROLLER_INVALID_STATE
@@ -86,6 +116,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
 
     modifier onlyValidWorkflow(uint _flowType) {
         if (!_isValidFlow(_flowType)) {
+            _emitErrorCode(JOB_CONTROLLER_INVALID_WORKFLOW_TYPE);
             assembly {
                 mstore(0, 13007) // JOB_CONTROLLER_INVALID_WORKFLOW_TYPE
                 return(0, 32)
@@ -97,6 +128,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     modifier onlyFlow(uint _jobId, uint _flowTypeGroup) {
         _flowTypeGroup = _flowTypeGroup & ~WORKFLOW_FEATURE_FLAGS;
         if (!_hasFlag(store.get(jobWorkflowType, _jobId), _flowTypeGroup)) {
+            _emitErrorCode(JOB_CONTROLLER_INVALID_WORKFLOW_TYPE);
             assembly {
                 mstore(0, 13007) // JOB_CONTROLLER_INVALID_WORKFLOW_TYPE
                 return(0, 32)
@@ -109,6 +141,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _flow = store.get(jobWorkflowType, _jobId);
         uint _jobState = store.get(jobState, _jobId);
         if (!_isStartedStateForFlow(_flow, _jobState)) {
+            _emitErrorCode(JOB_CONTROLLER_INVALID_STATE);
             assembly {
                 mstore(0, 13003) // JOB_CONTROLLER_INVALID_STATE
                 return(0, 32)
@@ -122,6 +155,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _flow = store.get(jobWorkflowType, _jobId);
         uint _jobState = store.get(jobState, _jobId);
         if (!_isFinishedStateForFlow(_flow, _jobState)) {
+            _emitErrorCode(JOB_CONTROLLER_INVALID_STATE);
             assembly {
                 mstore(0, 13003) // JOB_CONTROLLER_INVALID_STATE
                 return(0, 32)
@@ -130,7 +164,18 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         _;
     }
 
-    function JobController(
+    modifier onlyWithSubmittedRequest(uint _jobId) {
+        if (store.get(jobRequestedAdditionalTime, _jobId) == 0) {
+            _emitErrorCode(JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED);
+            assembly {
+                mstore(0, 13009) // JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED
+                return(0, 32)
+            }
+        }
+        _;
+    }
+
+    constructor(
         Storage _store,
         bytes32 _crate,
         address _roles2Library
@@ -238,17 +283,17 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
                        store.get(jobOfferOntop, _jobId, worker);
             }
         } else if (
-            _jobState == uint(JobState.STARTED) ||
-            (!_needsConfirmation && _jobState == uint(JobState.PENDING_START)) ||
-            (_needsConfirmation && _jobState == uint(JobState.PENDING_FINISH))
+            _jobState == JOB_STATE_STARTED ||
+            (!_needsConfirmation && _jobState == JOB_STATE_PENDING_START) ||
+            (_needsConfirmation && _jobState == JOB_STATE_PENDING_FINISH)
         ) {
             // Job has been canceled right after start or right before completion,
             // minimum of 1 working hour + "on top" should be released.
             return store.get(jobOfferOntop, _jobId, worker) +
                    store.get(jobOfferRate, _jobId, worker) * 60;
         } else if (
-            _jobState == uint(JobState.OFFER_ACCEPTED) ||
-            (_needsConfirmation && _jobState == uint(JobState.PENDING_START))
+            _jobState == JOB_STATE_OFFER_ACCEPTED ||
+            (_needsConfirmation && _jobState == JOB_STATE_PENDING_START)
         ) {
             // Job hasn't even started yet, but has been accepted,
             // release just worker "on top" expenses.
@@ -260,7 +305,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         address worker = store.get(jobWorker, _jobId);
         uint _jobState = _getJobState(_jobId);
 
-        if (_jobState == uint(JobState.WORK_ACCEPTED)) {
+        if (_jobState == JOB_STATE_WORK_ACCEPTED) {
             return store.get(jobOfferRate, _jobId, worker);
         }
     }
@@ -301,7 +346,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         store.set(bindStatus, jobId, false);
         store.set(jobsCount, jobId);
         store.set(jobCreatedAt, jobId, now);
-        store.set(jobState, jobId, uint(JobState.CREATED));
+        store.set(jobState, jobId, JOB_STATE_CREATED);
         store.set(jobWorkflowType, jobId, _flowType);
         store.set(jobClient, jobId, msg.sender);
         store.set(jobSkillsArea, jobId, _area);
@@ -311,7 +356,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         store.set(jobDetailsIPFSHash, jobId, _detailsIPFSHash);
         store.add(clientJobs, bytes32(msg.sender), jobId);
 
-        _emitJobPosted(jobId, _flowType, msg.sender, _area, _category, _skills, _defaultPay, _detailsIPFSHash, false);
+        _emitter().emitJobPosted(jobId, _flowType, msg.sender, _area, _category, _skills, _defaultPay, _detailsIPFSHash, false);
         return OK;
     }
 
@@ -323,7 +368,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     )
     onlyNotClient(_jobId)
     onlyFlow(_jobId, WORKFLOW_TM)
-    onlyJobState(_jobId, JobState.CREATED)
+    onlyJobState(_jobId, JOB_STATE_CREATED)
     public
     returns (uint)
     {
@@ -338,10 +383,9 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         store.set(jobOfferRate, _jobId, msg.sender, _rate);
         store.set(jobOfferEstimate, _jobId, msg.sender, _estimate);
         store.set(jobOfferOntop, _jobId, msg.sender, _ontop);
-        store.add(workerJobs, bytes32(msg.sender), _jobId);
-        store.add(jobOffers, bytes32(_jobId), msg.sender);
+        _addJobOffer(_jobId);
 
-        _emitJobOfferPosted(_jobId, msg.sender, _rate, _estimate, _ontop);
+        _emitter().emitJobOfferPosted(_jobId, msg.sender, _rate, _estimate, _ontop);
         return OK;
     }
 
@@ -351,7 +395,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     )
     onlyNotClient(_jobId)
     onlyFlow(_jobId, WORKFLOW_FIXED_PRICE)
-    onlyJobState(_jobId, JobState.CREATED)
+    onlyJobState(_jobId, JOB_STATE_CREATED)
     external
     returns (uint) {
         require(_price > 0);
@@ -361,8 +405,9 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         }
 
         store.set(jobOfferRate, _jobId, msg.sender, _price);
-        store.add(workerJobs, bytes32(msg.sender), _jobId);
-        store.add(jobOffers, bytes32(_jobId), msg.sender);
+        _addJobOffer(_jobId);
+
+        _emitter().emitJobOfferPosted(_jobId, msg.sender, _price);
 
         return OK;
     }
@@ -376,12 +421,18 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         );
     }
 
+    function _addJobOffer(uint _jobId) private {
+        store.add(workerJobs, bytes32(msg.sender), _jobId);
+        store.add(jobOffers, bytes32(_jobId), msg.sender);
+        store.set(jobOfferPostedAt, _jobId, msg.sender, now);
+    }
+
     function acceptOffer(
         uint _jobId,
         address _worker
     )
     onlyClient(_jobId)
-    onlyJobState(_jobId, JobState.CREATED)
+    onlyJobState(_jobId, JOB_STATE_CREATED)
     external
     payable
     returns (uint _resultCode)
@@ -401,10 +452,10 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         }
 
         store.set(jobAcceptedAt, _jobId, now);
-        store.set(jobState, _jobId, uint(JobState.OFFER_ACCEPTED));
+        store.set(jobState, _jobId, JOB_STATE_OFFER_ACCEPTED);
         _cleanupJobOffers(_jobId, _worker);
 
-        JobController(getEventsHistory()).emitJobOfferAccepted(_jobId, _worker);
+        _emitter().emitJobOfferAccepted(_jobId, _worker);
         return OK;
     }
 
@@ -422,12 +473,14 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _jobId
     )
     onlyWorker(_jobId)
-    onlyJobState(_jobId, JobState.OFFER_ACCEPTED)
+    onlyJobState(_jobId, JOB_STATE_OFFER_ACCEPTED)
     external
     returns (uint)
     {
         store.set(jobPendingStartAt, _jobId, now);
-        store.set(jobState, _jobId, uint(JobState.PENDING_START));
+        store.set(jobState, _jobId, JOB_STATE_PENDING_START);
+
+        _emitter().emitStartWorkRequested(_jobId, now);
         return OK;
     }
 
@@ -435,14 +488,15 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         uint _jobId
     )
     onlyClient(_jobId)
-    onlyJobState(_jobId, JobState.PENDING_START)
+    onlyFlow(_jobId, WORKFLOW_TM)
+    onlyJobState(_jobId, JOB_STATE_PENDING_START)
     external
     returns (uint)
     {
-        store.set(jobState, _jobId, uint(JobState.STARTED));
+        store.set(jobState, _jobId, JOB_STATE_STARTED);
         store.set(jobStartTime, _jobId, now);
 
-        JobController(getEventsHistory()).emitWorkStarted(_jobId, now);
+        _emitter().emitWorkStarted(_jobId, now);
         return OK;
     }
 
@@ -461,7 +515,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         store.set(jobPaused, _jobId, true);
         store.set(jobPausedAt, _jobId, now);
 
-        JobController(getEventsHistory()).emitWorkPaused(_jobId, now);
+        _emitter().emitWorkPaused(_jobId, now);
         return OK;
     }
 
@@ -486,27 +540,70 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         store.set(jobPaused, _jobId, false);
         store.set(jobPausedFor, _jobId, store.get(jobPausedFor, _jobId) + (now - store.get(jobPausedAt, _jobId)));
 
-        JobController(getEventsHistory()).emitWorkResumed(_jobId, now);
+        _emitter().emitWorkResumed(_jobId, now);
         return OK;
     }
 
-    function addMoreTime(
+    function submitAdditionalTimeRequest(
+        uint _jobId,
+        uint16 _additionalTime
+    )
+    onlyWorker(_jobId)
+    onlyFlow(_jobId, WORKFLOW_TM)
+    onlyStartedState(_jobId)
+    external
+    returns (uint)
+    {
+        require(_additionalTime != 0);
+
+        store.set(jobRequestedAdditionalTime, _jobId, uint(_additionalTime));
+
+        _emitter().emitTimeRequestSubmitted(_jobId, _additionalTime);
+        return OK;
+    }
+
+    function acceptAdditionalTimeRequest(
         uint _jobId,
         uint16 _additionalTime
     )
     onlyClient(_jobId)
     onlyFlow(_jobId, WORKFLOW_TM)
     onlyStartedState(_jobId)
+    onlyWithSubmittedRequest(_jobId)
     external
     payable
     returns (uint)
     {
-        require(_additionalTime != 0);
+        // ensure that no raised condition were met and client knows exactly how much time is actually requested
+        uint16 _storedAdditionalTime = uint16(store.get(jobRequestedAdditionalTime, _jobId));
+        if (_storedAdditionalTime != _additionalTime) {
+            return _emitErrorCode(JOB_CONTROLLER_INCORRECT_TIME_PROVIDED);
+        }
 
         if (!_setNewEstimate(_jobId, _additionalTime)) {
             revert();
         }
-        JobController(getEventsHistory()).emitTimeAdded(_jobId, _additionalTime);
+
+        store.set(jobRequestedAdditionalTime, _jobId, 0);
+
+        _emitter().emitTimeRequestAccepted(_jobId, _additionalTime);
+        return OK;
+    }
+
+    function rejectAdditionalTimeRequest(
+        uint _jobId
+    )
+    onlyClient(_jobId)
+    onlyFlow(_jobId, WORKFLOW_TM)
+    onlyStartedState(_jobId)
+    onlyWithSubmittedRequest(_jobId)
+    external
+    returns (uint)
+    {
+        uint _additionalTime = store.get(jobRequestedAdditionalTime, _jobId);
+        store.set(jobRequestedAdditionalTime, _jobId, 0);
+
+        _emitter().emitTimeRequestRejected(_jobId, _additionalTime);
         return OK;
     }
 
@@ -537,7 +634,9 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     {
         _resumeWork(_jobId);  // In case worker have forgotten about paused timer
         store.set(jobPendingFinishAt, _jobId, now);
-        store.set(jobState, _jobId, uint(JobState.PENDING_FINISH));
+        store.set(jobState, _jobId, JOB_STATE_PENDING_FINISH);
+
+        _emitter().emitEndWorkRequested(_jobId, now);
         return OK;
     }
 
@@ -546,14 +645,14 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     )
     onlyClient(_jobId)
     onlyFlow(_jobId, WORKFLOW_TM)
-    onlyJobState(_jobId, JobState.PENDING_FINISH)
+    onlyJobState(_jobId, JOB_STATE_PENDING_FINISH)
     external
     returns (uint)
     {
         store.set(jobFinishTime, _jobId, now);
-        store.set(jobState, _jobId, uint(JobState.FINISHED));
+        store.set(jobState, _jobId, JOB_STATE_FINISHED);
 
-        JobController(getEventsHistory()).emitWorkFinished(_jobId, now);
+        _emitter().emitWorkFinished(_jobId, now);
         return OK;
     }
 
@@ -588,9 +687,9 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         }
 
         store.set(jobFinalizedAt, _jobId, _getJobState(_jobId));
-        store.set(jobState, _jobId, uint(JobState.FINALIZED));
+        store.set(jobState, _jobId, JOB_STATE_FINALIZED);
 
-        JobController(getEventsHistory()).emitJobCanceled(_jobId);
+        _emitter().emitJobCanceled(_jobId);
         return OK;
     }
 
@@ -598,13 +697,13 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     external
     onlyClient(_jobId)
     onlyFlow(_jobId, WORKFLOW_FIXED_PRICE)
-    onlyJobState(_jobId, JobState.PENDING_FINISH)
+    onlyJobState(_jobId, JOB_STATE_PENDING_FINISH)
     returns (uint) 
     {
         store.set(jobFinishTime, _jobId, now);
-        store.set(jobState, _jobId, uint(JobState.WORK_ACCEPTED));
+        store.set(jobState, _jobId, JOB_STATE_WORK_ACCEPTED);
 
-        JobController(getEventsHistory()).emitWorkAccepted(_jobId, now);
+        _emitter().emitWorkAccepted(_jobId, now);
         return OK;
     }
 
@@ -612,13 +711,13 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     external
     onlyClient(_jobId)
     onlyFlow(_jobId, WORKFLOW_FIXED_PRICE)
-    onlyJobState(_jobId, JobState.PENDING_FINISH)
+    onlyJobState(_jobId, JOB_STATE_PENDING_FINISH)
     returns (uint _resultCode) 
     {
         store.set(jobFinishTime, _jobId, now);
-        store.set(jobState, _jobId, uint(JobState.WORK_REJECTED));
+        store.set(jobState, _jobId, JOB_STATE_WORK_REJECTED);
 
-        JobController(getEventsHistory()).emitWorkRejected(_jobId, now);
+        _emitter().emitWorkRejected(_jobId, now);
         return OK;
     }
 
@@ -630,10 +729,10 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     external
     auth
     onlyFlow(_jobId, WORKFLOW_FIXED_PRICE)
-    onlyJobState(_jobId, JobState.WORK_REJECTED)
+    onlyJobState(_jobId, JOB_STATE_WORK_REJECTED)
     returns (uint _resultCode) {
-        uint payCheck = store.get(jobOfferRate, _jobId, worker);
         address worker = store.get(jobWorker, _jobId);
+        uint payCheck = store.get(jobOfferRate, _jobId, worker);
         address client = store.get(jobClient, _jobId);
         if (_workerPaycheck > 0) {
             _resultCode = paymentProcessor.releasePayment(
@@ -662,9 +761,9 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         }
 
         store.set(jobFinalizedAt, _jobId, _getJobState(_jobId));
-        store.set(jobState, _jobId, uint(JobState.FINALIZED));
+        store.set(jobState, _jobId, JOB_STATE_FINALIZED);
 
-        JobController(getEventsHistory()).emitWorkDistputeResolved(_jobId, now);
+        _emitter().emitWorkDistputeResolved(_jobId, now);
         return OK;
     }
 
@@ -691,9 +790,9 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         }
 
         store.set(jobFinalizedAt, _jobId, _getJobState(_jobId));
-        store.set(jobState, _jobId, uint(JobState.FINALIZED));
+        store.set(jobState, _jobId, JOB_STATE_FINALIZED);
 
-        JobController(getEventsHistory()).emitPaymentReleased(_jobId);
+        _emitter().emitPaymentReleased(_jobId);
         return OK;
     }
 
@@ -710,55 +809,75 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     )
     public
     {
-        JobPosted(_self(), _jobId, bytes32(_flowType), _client, _skillsArea, _skillsCategory, _skills, _defaultPay, _detailsIPFSHash, _bindStatus);
+        emit JobPosted(_self(), _jobId, bytes32(_flowType), _client, _skillsArea, _skillsCategory, _skills, _defaultPay, _detailsIPFSHash, _bindStatus);
     }
 
     function emitJobOfferPosted(uint _jobId, address _worker, uint _rate, uint _estimate, uint _ontop) public {
-        JobOfferPosted(_self(), _jobId, _worker, _rate, _estimate, _ontop);
+        emit JobOfferPosted(_self(), _jobId, _worker, _rate, _estimate, _ontop);
+    }
+
+    function emitJobOfferPosted(uint _jobId, address _worker, uint _price) public {
+        emit JobOfferPosted(_self(), _jobId, _worker, _price);
     }
 
     function emitJobOfferAccepted(uint _jobId, address _worker) public {
-        JobOfferAccepted(_self(), _jobId, _worker);
+        emit JobOfferAccepted(_self(), _jobId, _worker);
+    }
+
+    function emitStartWorkRequested(uint _jobId, uint _at) public {
+        emit StartWorkRequested(_self(), _jobId, _at);
     }
 
     function emitWorkStarted(uint _jobId, uint _at) public {
-        WorkStarted(_self(), _jobId, _at);
+        emit WorkStarted(_self(), _jobId, _at);
     }
 
     function emitWorkPaused(uint _jobId, uint _at) public {
-        WorkPaused(_self(), _jobId, _at);
+        emit WorkPaused(_self(), _jobId, _at);
     }
 
     function emitWorkResumed(uint _jobId, uint _at) public {
-        WorkResumed(_self(), _jobId, _at);
+        emit WorkResumed(_self(), _jobId, _at);
     }
 
-    function emitTimeAdded(uint _jobId, uint _time) public {
-        TimeAdded(_self(), _jobId, _time);
+    function emitTimeRequestSubmitted(uint _jobId, uint _time) public {
+        emit TimeRequestSubmitted(_self(), _jobId, _time);
+    }
+
+    function emitTimeRequestAccepted(uint _jobId, uint _time) public {
+        emit TimeRequestAccepted(_self(), _jobId, _time);
+    }
+
+    function emitTimeRequestRejected(uint _jobId, uint _time) public {
+        emit TimeRequestRejected(_self(), _jobId, _time);
+    }
+
+    function emitEndWorkRequested(uint _jobId, uint _at) public {
+        emit EndWorkRequested(_self(), _jobId, _at);
     }
 
     function emitWorkFinished(uint _jobId, uint _at) public {
-        WorkFinished(_self(), _jobId, _at);
+        emit WorkFinished(_self(), _jobId, _at);
     }
 
     function emitWorkAccepted(uint _jobId, uint _at) public {
-        WorkAccepted(_self(), _jobId, _at);
+        emit WorkAccepted(_self(), _jobId, _at);
     }
 
     function emitWorkRejected(uint _jobId, uint _at) public {
-        WorkRejected(_self(), _jobId, _at);
+        emit WorkRejected(_self(), _jobId, _at);
     }
 
     function emitWorkDistputeResolved(uint _jobId, uint _at) public {
-        WorkDisputeResolved(_self(), _jobId, _at);
+        emit WorkDisputeResolved(_self(), _jobId, _at);
     }
 
     function emitPaymentReleased(uint _jobId) public {
-        PaymentReleased(_self(), _jobId);
+        emit PaymentReleased(_self(), _jobId);
     }
 
     function emitJobCanceled(uint _jobId) public {
-        JobCanceled(_self(), _jobId);
+        emit JobCanceled(_self(), _jobId);
     }
 
     function _getJobState(uint _jobId) private view returns (uint) {
@@ -769,19 +888,19 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
         uint _flowType = _flow & ~WORKFLOW_FEATURE_FLAGS;
         if (_flowType == WORKFLOW_TM) {
-            if (_needsConfirmation && _jobState == uint(JobState.FINISHED)) {
+            if (_needsConfirmation && _jobState == JOB_STATE_FINISHED) {
                 return true;
             }
             
             if (!_needsConfirmation &&
-                (_jobState == uint(JobState.PENDING_FINISH) || _jobState == uint(JobState.FINISHED))
+                (_jobState == JOB_STATE_PENDING_FINISH || _jobState == JOB_STATE_FINISHED)
             ) {
                 return true;
             }
         }
 
         if (_flowType == WORKFLOW_FIXED_PRICE) {
-            if (_jobState == uint(JobState.WORK_ACCEPTED)) {
+            if (_jobState == JOB_STATE_WORK_ACCEPTED) {
                 return true;
             }
         }
@@ -790,77 +909,45 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     function _isStartedStateForFlow(uint _flow, uint _jobState) internal pure returns (bool) {
         bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
         if (_needsConfirmation && 
-        _jobState == uint(JobState.STARTED)) {
+        _jobState == JOB_STATE_STARTED) {
             return true;
         }
 
         if (!_needsConfirmation &&
-            (_jobState == uint(JobState.PENDING_START) || _jobState == uint(JobState.STARTED))
+            (_jobState == JOB_STATE_PENDING_START || _jobState == JOB_STATE_STARTED)
         ) {
             return true;
         }
     }
 
     function _isActiveStateForFlow(uint _flow, uint _jobState) internal pure returns (bool) {
-        if (_jobState == uint(JobState.OFFER_ACCEPTED)) {
+        if (_jobState == JOB_STATE_OFFER_ACCEPTED) {
             return true;
         }
         
-        if (_jobState == uint(JobState.PENDING_START)) {
+        if (_jobState == JOB_STATE_PENDING_START) {
             return true;
         }
 
-        if (_jobState == uint(JobState.STARTED)) {
+        if (_jobState == JOB_STATE_STARTED) {
             return true;
         }
 
         bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
-        if (_needsConfirmation && _jobState == uint(JobState.PENDING_FINISH)) {
+        if (_needsConfirmation && _jobState == JOB_STATE_PENDING_FINISH) {
             return true;
         }
     }
 
-    function _emitJobPosted(
-        uint _jobId,
-        uint _flowType,
-        address _client,
-        uint _skillsArea,
-        uint _skillsCategory,
-        uint _skills,
-        uint _defaultPay,
-        bytes32 _detailsIPFSHash,
-        bool _bindStatus
-    )
-    internal
-    {
-        JobController(getEventsHistory()).emitJobPosted(
-            _jobId,
-            _flowType,
-            _client,
-            _skillsArea,
-            _skillsCategory,
-            _skills,
-            _defaultPay,
-            _detailsIPFSHash,
-            _bindStatus
-        );
+    function _emitErrorCode(uint _errorCode) internal returns (uint) {
+        if (msg.value > 0) {
+            msg.sender.transfer(msg.value);
+        }
+        return super._emitErrorCode(_errorCode);
     }
 
-    function _emitJobOfferPosted(
-        uint _jobId,
-        address _worker,
-        uint _rate,
-        uint _estimate,
-        uint _ontop
-    )
-    internal
-    {
-        JobController(getEventsHistory()).emitJobOfferPosted(
-            _jobId,
-            _worker,
-            _rate,
-            _estimate,
-            _ontop
-        );
+    function _emitter() private view returns (JobController) {
+        return JobController(getEventsHistory());
     }
 }
+
