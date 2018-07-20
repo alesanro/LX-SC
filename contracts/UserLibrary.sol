@@ -62,6 +62,8 @@ contract UserLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
     StorageInterface.AddressUIntUIntUIntMapping skills;
     StorageInterface.AddressesSet users;
 
+    string public version = "v0.0.1";
+
     modifier onlyValidArea(uint _value) {
         if (!_isValidAreaOrCategory(_value)) {
             assembly {

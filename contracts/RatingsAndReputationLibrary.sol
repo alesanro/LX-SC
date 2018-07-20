@@ -83,6 +83,8 @@ contract RatingsAndReputationLibrary is StorageAdapter, MultiEventsHistoryAdapte
 
     StorageInterface.AddressUIntUInt8Mapping boardRating;
 
+    string public version = "v0.0.1";
+
     modifier canSetRating(uint _jobId) {
          // Ensure job is FINALIZED
         if (jobController.getJobState(_jobId) != JOB_STATE_FINALIZED) {

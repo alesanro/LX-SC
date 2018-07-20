@@ -54,6 +54,8 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
     /// @dev mapping(board id => set(job ids))
     StorageInterface.UIntSetMapping boundJobsInBoard;
 
+    string public version = "v0.0.1";
+
     modifier notBindedJobYet(uint _boardId, uint _jobId) {
         if (store.get(jobsBoard, _jobId) != 0) {
             uint _resultCode = _emitErrorCode(BOARD_CONTROLLER_JOB_IS_ALREADY_BINDED);

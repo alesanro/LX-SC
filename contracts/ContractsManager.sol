@@ -20,6 +20,8 @@ contract ContractsManager is Owned, StorageAdapter, Roles2LibraryAdapter {
     StorageInterface.AddressesSet contractsAddresses;
     StorageInterface.Bytes32AddressMapping contractsTypes;
 
+    string public version = "v0.0.1";
+
     event ContractsManagerAddContract(address indexed contractAddress, bytes32 t);
     event ContractsManagerRemoveContract(address indexed contractAddress);
     event Error(address indexed self, uint errorCode);
@@ -32,8 +34,8 @@ contract ContractsManager is Owned, StorageAdapter, Roles2LibraryAdapter {
     StorageAdapter(_store, _crate)
     Roles2LibraryAdapter(_roles2Library)
     {
-        contractsAddresses.init('contracts');
-        contractsTypes.init('contractTypes');
+        contractsAddresses.init("contracts");
+        contractsTypes.init("contractTypes");
     }
 
     /**

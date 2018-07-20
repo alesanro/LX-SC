@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.0.10"></a>
+## 0.0.10 (2018-07-20)
+
+### Features
+
+- releasepayment: fix payment flow - withdraw on release payment action
+- BREAKING CHANGES: create flow for requesting additional time
+
+### Fixes
+
+- contracts: library integration
+- events: add new events to JobController
+
+
 <a name="0.0.8"></a>
 ## 0.0.8 (2018-06-05)
 

@@ -45,6 +45,8 @@ contract SkillsLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libra
     StorageInterface.UIntUIntBytes32Mapping categories;
     StorageInterface.UIntUIntUIntBytes32Mapping skills;
 
+    string public version = "v0.0.1";
+
     modifier singleFlag(uint _flag) {
         if (!_isSingleFlag(_flag)) {
             return;

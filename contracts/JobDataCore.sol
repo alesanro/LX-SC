@@ -93,6 +93,8 @@ contract JobDataCore is StorageAdapter, BitOps {
     // At which state job has been marked as FINALIZED
     StorageInterface.UIntUIntMapping jobFinalizedAt;
 
+    string public version = "v0.0.1";
+
     constructor(
         Storage _store,
         bytes32 _crate

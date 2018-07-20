@@ -31,7 +31,6 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     uint constant PAYMENT_GATEWAY_TRANSFER_FAILED = PAYMENT_GATEWAY_SCOPE + 2;
     uint constant PAYMENT_GATEWAY_NO_FEE_ADDRESS_DESTINATION = PAYMENT_GATEWAY_SCOPE + 3;
 
-
     event FeeSet(address indexed self, uint feePercent);
     event Deposited(address indexed self, address indexed by, uint value);
     event Withdrawn(address indexed self, address indexed by, uint value);
@@ -41,6 +40,8 @@ contract PaymentGateway is StorageAdapter, MultiEventsHistoryAdapter, Roles2Libr
     StorageInterface.AddressUIntMapping balances; // contract => user => balance
     StorageInterface.Address feeAddress;
     StorageInterface.UInt fees; // 10000 is 100%.
+
+    string public version = "v0.0.1";
 
     constructor(
         Storage _store,

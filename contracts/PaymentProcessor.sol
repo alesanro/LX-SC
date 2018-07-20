@@ -48,10 +48,11 @@ contract PaymentProcessor is Roles2LibraryAdapter {
     uint constant PAYMENT_PROCESSOR_SCOPE = 16000;
     uint constant PAYMENT_PROCESSOR_OPERATION_IS_NOT_APPROVED = PAYMENT_PROCESSOR_SCOPE + 1;
 
-
     PaymentGatewayInterface public paymentGateway;
     bool public serviceMode = false;
     mapping(bytes32 => bool) public approved;
+
+    string public version = "v0.0.1";
 
     modifier onlyApproved(bytes32 _operationId) {
         if (serviceMode && !approved[_operationId]) {

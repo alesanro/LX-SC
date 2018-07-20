@@ -17,6 +17,8 @@ contract IPFSLibrary is StorageAdapter, MultiEventsHistoryAdapter, Roles2Library
 
     StorageInterface.AddressBytes32Bytes32Mapping ipfsHashes;
 
+    string public version = "v0.0.1";
+
     constructor(
         Storage _store,
         bytes32 _crate,
