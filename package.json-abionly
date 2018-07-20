@@ -1,6 +1,6 @@
 {
     "name": "@laborx/sc-abi",
-    "version": "0.0.8",
+    "version": "0.0.10",
     "description": "ChronoBank Labor-X Smart Contracts",
     "scripts": {
         "release": "standard-version",
