@@ -62,7 +62,7 @@ contract('JobController', function(accounts) {
     PENDING_START: 2**2, 
     STARTED: 2**3, 
     PENDING_FINISH: 2**4, 
-    FINISHED: 2**5, 
+    FINISHED: 2**6, // DEPRECATED: see WORK_ACCEPTED
     WORK_ACCEPTED: 2**6, 
     WORK_REJECTED: 2**7, 
     FINALIZED: 2**8,
@@ -166,7 +166,7 @@ contract('JobController', function(accounts) {
       .then(() => operation.call(...args))
       .then(result => assert.equal(result.toNumber(), stages.PENDING_FINISH))
 
-      .then(() => jobController.confirmEndWork(jobId, {from: client}))
+      .then(() => jobController.acceptWorkResults(jobId, {from: client}))
       .then(() => operation.call(...args))
       .then(result => assert.equal(result.toNumber(), stages.FINISHED))
 
@@ -218,7 +218,7 @@ contract('JobController', function(accounts) {
     }
 
     await jobController.endWork(jobId, {from: worker})
-    await jobController.confirmEndWork(jobId, {from: client})
+    await jobController.acceptWorkResults(jobId, {from: client})
 
     const workerEthBalanceBefore = await helpers.getEthBalance(worker)
     const clientEthBalanceBefore = await helpers.getEthBalance(client)
@@ -802,9 +802,9 @@ contract('JobController', function(accounts) {
         .then(() => jobController.cancelJob.call(jobId, {from: stranger}))
         .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
 
-        .then(() => jobController.confirmEndWork.call(jobId, {from: stranger}))
+        .then(() => jobController.acceptWorkResults.call(jobId, {from: stranger}))
         .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
-        .then(() => jobController.confirmEndWork(jobId, {from: client}))
+        .then(() => jobController.acceptWorkResults(jobId, {from: client}))
 
         .then(() => jobController.releasePayment(jobId))
         .then(() => jobsDataProvider.getJobState(jobId))
@@ -859,7 +859,7 @@ contract('JobController', function(accounts) {
     });
 
     it('should allow client to confirm end work only when job has PENDING_FINISH status', () => {
-      const operation = jobController.confirmEndWork;
+      const operation = jobController.acceptWorkResults;
       const args = [1, {from: client}];
       const results = {PENDING_FINISH: ErrorsNamespace.OK};
       return Promise.resolve()
@@ -908,7 +908,7 @@ contract('JobController', function(accounts) {
         .then(() => jobController.startWork(jobId, {from: worker}))
         .then(() => jobController.confirmStartWork(jobId, {from: client}))
         .then(() => jobController.endWork(jobId, {from: worker}))
-        .then(() => jobController.confirmEndWork(jobId, {from: client}))
+        .then(() => jobController.acceptWorkResults(jobId, {from: client}))
         .then(() => jobsDataProvider.getJobState(jobId))
         .then(asserts.equal(JobState.FINISHED))
         .then(() => jobController.cancelJob.call(jobId, {from: client}))
@@ -1117,12 +1117,12 @@ contract('JobController', function(accounts) {
           assert.equal(log.jobId.toString(), jobId);
         })
         // Confirm end of work
-        .then(() => jobController.confirmEndWork(jobId, {from: client}))
-        .then(tx => eventsHelper.extractEvents(tx, "WorkFinished"))
+        .then(() => jobController.acceptWorkResults(jobId, {from: client}))
+        .then(tx => eventsHelper.extractEvents(tx, "WorkAccepted"))
         .then(events => {
           assert.equal(events.length, 1);
           assert.equal(events[0].address, multiEventsHistory.address);
-          assert.equal(events[0].event, 'WorkFinished');
+          assert.equal(events[0].event, 'WorkAccepted');
           const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), jobId);
@@ -1302,7 +1302,7 @@ contract('JobController', function(accounts) {
   });
 
 
-  describe.only('Reward release', () => {
+  describe('Reward release', () => {
 
     it("should NOT allow to cancel job if operation " +
        "was not allowed by Payment Processor", () => {
@@ -1368,7 +1368,7 @@ contract('JobController', function(accounts) {
         .then(() => jobController.startWork(jobId, {from: worker}))
         .then(() => jobController.confirmStartWork(jobId, {from: client}))
         .then(() => jobController.endWork(jobId, {from: worker}))
-        .then(() => jobController.confirmEndWork(jobId, {from: client}))
+        .then(() => jobController.acceptWorkResults(jobId, {from: client}))
 
         .then(() => paymentProcessor.enableServiceMode())
         .then(() => paymentProcessor.serviceMode())
@@ -1395,7 +1395,7 @@ contract('JobController', function(accounts) {
         .then(() => jobController.startWork(jobId, {from: worker}))
         .then(() => jobController.confirmStartWork(jobId, {from: client}))
         .then(() => jobController.endWork(jobId, {from: worker}))
-        .then(() => jobController.confirmEndWork(jobId, {from: client}))
+        .then(() => jobController.acceptWorkResults(jobId, {from: client}))
 
         .then(() => paymentProcessor.enableServiceMode())
         .then(() => paymentProcessor.serviceMode())
