@@ -32,10 +32,18 @@ It is a standard way to treat spent resources and pay for them according to a se
 6. **worker**:> `JobController#pauseWork()` or `JobController#resumeWork()`
 7. **client**:> (could provide additional time to finish work) `JobController#addMoreTime()`
 8. **worker**:> `JobController#endWork()`
-9. **client**:> `JobController#confirmEndWorking()`
+
+After that both are possible:
+
+9. **client**:> `JobController#acceptWorkResults()`
 10. **anyone**:> `JobController#releasePayment()`
 
-So after the step 10 (releasing payment) a worker has ETH on his account that he have earned.
+or (when dispute is opened):
+
+9. **client**:> `JobController#rejectWorkResults()`
+10. **referee**:> `JobController#resolveWorkDispute()` (here payments are transferred directly to client/worker accounts in provided proportions)
+
+So after the step 10 (releasing payment) a worker has ETH on his account that he have earned or an arbiter resolves dispute and decided ETH will be transferred to participants.
 
 ### Fixed Price
 
