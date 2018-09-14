@@ -46,6 +46,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     uint constant JOB_CONTROLLER_INVALID_ROLE = JOB_CONTROLLER_SCOPE + 8;
     uint constant JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED = JOB_CONTROLLER_SCOPE + 9;
     uint constant JOB_CONTROLLER_INCORRECT_TIME_PROVIDED = JOB_CONTROLLER_SCOPE + 10;
+    uint constant JOB_CONTROLLER_INVALID_WORKER_PAYCHECK_VALUE = JOB_CONTROLLER_SCOPE + 11;
 
 
     event JobPosted(address indexed self, uint indexed jobId, bytes32 flowType, address client, uint skillsArea, uint skillsCategory, uint skills, uint defaultPay, bytes32 detailsIPFSHash, bool bindStatus);
@@ -60,7 +61,6 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     event WorkPaused(address indexed self, uint indexed jobId, uint at);
     event WorkResumed(address indexed self, uint indexed jobId, uint at);
     event EndWorkRequested(address indexed self, uint indexed jobId, uint at);
-    event WorkFinished(address indexed self, uint indexed jobId, uint at);
     event WorkAccepted(address indexed self, uint indexed jobId, uint at);
     event WorkRejected(address indexed self, uint indexed jobId, uint at);
     event WorkDisputeResolved(address indexed self, uint indexed jobId, uint at);
@@ -619,7 +619,10 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
             store.get(jobOfferEstimate, _jobId, store.get(jobWorker, _jobId)) + _additionalTime
         );
 
-        require(calculateLockAmount(_jobId) - jobPaymentLocked == msg.value);
+        require(
+            calculateLockAmount(_jobId) - jobPaymentLocked == msg.value, 
+            "JOB_CONTROLLER_INVALID_TIME_REQUEST_PAYMENT_VALUE"
+        );
 
         return OK == paymentProcessor.lockPayment.value(msg.value)(bytes32(_jobId), msg.sender);
     }
@@ -637,22 +640,6 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         store.set(jobState, _jobId, JOB_STATE_PENDING_FINISH);
 
         _emitter().emitEndWorkRequested(_jobId, now);
-        return OK;
-    }
-
-    function confirmEndWork(
-        uint _jobId
-    )
-    onlyClient(_jobId)
-    onlyFlow(_jobId, WORKFLOW_TM)
-    onlyJobState(_jobId, JOB_STATE_PENDING_FINISH)
-    external
-    returns (uint)
-    {
-        store.set(jobFinishTime, _jobId, now);
-        store.set(jobState, _jobId, JOB_STATE_FINISHED);
-
-        _emitter().emitWorkFinished(_jobId, now);
         return OK;
     }
 
@@ -696,7 +683,6 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     function acceptWorkResults(uint _jobId)
     external
     onlyClient(_jobId)
-    onlyFlow(_jobId, WORKFLOW_FIXED_PRICE)
     onlyJobState(_jobId, JOB_STATE_PENDING_FINISH)
     returns (uint) 
     {
@@ -710,7 +696,6 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     function rejectWorkResults(uint _jobId)
     external
     onlyClient(_jobId)
-    onlyFlow(_jobId, WORKFLOW_FIXED_PRICE)
     onlyJobState(_jobId, JOB_STATE_PENDING_FINISH)
     returns (uint _resultCode) 
     {
@@ -728,11 +713,14 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     )
     external
     auth
-    onlyFlow(_jobId, WORKFLOW_FIXED_PRICE)
     onlyJobState(_jobId, JOB_STATE_WORK_REJECTED)
     returns (uint _resultCode) {
+        uint payCheck = calculateLockAmount(_jobId);
+        if (payCheck < _workerPaycheck) {
+            return _emitErrorCode(JOB_CONTROLLER_INVALID_WORKER_PAYCHECK_VALUE);
+        }
+
         address worker = store.get(jobWorker, _jobId);
-        uint payCheck = store.get(jobOfferRate, _jobId, worker);
         address client = store.get(jobClient, _jobId);
         if (_workerPaycheck > 0) {
             _resultCode = paymentProcessor.releasePayment(
@@ -856,10 +844,6 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         emit EndWorkRequested(_self(), _jobId, _at);
     }
 
-    function emitWorkFinished(uint _jobId, uint _at) public {
-        emit WorkFinished(_self(), _jobId, _at);
-    }
-
     function emitWorkAccepted(uint _jobId, uint _at) public {
         emit WorkAccepted(_self(), _jobId, _at);
     }
@@ -888,12 +872,12 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
         uint _flowType = _flow & ~WORKFLOW_FEATURE_FLAGS;
         if (_flowType == WORKFLOW_TM) {
-            if (_needsConfirmation && _jobState == JOB_STATE_FINISHED) {
+            if (_needsConfirmation && _jobState == JOB_STATE_WORK_ACCEPTED) {
                 return true;
             }
             
             if (!_needsConfirmation &&
-                (_jobState == JOB_STATE_PENDING_FINISH || _jobState == JOB_STATE_FINISHED)
+                (_jobState == JOB_STATE_PENDING_FINISH || _jobState == JOB_STATE_WORK_ACCEPTED)
             ) {
                 return true;
             }
