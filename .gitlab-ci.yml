@@ -32,7 +32,8 @@ Build&TEST:
     - npm run testrpc > /dev/null &
     - sleep 5
     - npx truffle test
-    #- kill -s SIGTERM $(ps aux | grep testrpc | awk '{print$2}')
+    - kill -s SIGTERM $(ps aux | grep npm | awk '{print$2}')
+    - kill -s SIGTERM $(ps aux | grep testrpc | awk '{print$2}')
     - exit 0
 
   artifacts:
