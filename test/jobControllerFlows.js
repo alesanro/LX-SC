@@ -1534,7 +1534,7 @@ contract("JobController workflows", accounts => {
 		})
 	})
 
-	context.only("Fixed priced", () => {
+	context("Fixed priced", () => {
 		const jobFlow = Workflow.FIXED_PRICE
 
 		context("Job posting", () => {
