@@ -1117,7 +1117,8 @@ contract('Integration tests (user stories)', (accounts) => {
             })
         })
 
-        describe("I cannot post a job offer if I does not have enough skills", () => {
+        // TODO: return back when skill check will be enabled
+        describe.skip("I cannot post a job offer if I does not have enough skills", () => {
             let applicableJob
             var notApplicableJob
 
