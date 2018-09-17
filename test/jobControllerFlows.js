@@ -52,7 +52,7 @@ contract("JobController workflows", accounts => {
 		PENDING_START: 2**2, 
 		STARTED: 2**3, 
 		PENDING_FINISH: 2**4, 
-		FINISHED: 2**5, 
+		FINISHED: 2**6, // DEPRECATED: see WORK_ACCEPTED
 		WORK_ACCEPTED: 2**6, 
 		WORK_REJECTED: 2**7, 
 		FINALIZED: 2**8,
@@ -140,7 +140,7 @@ contract("JobController workflows", accounts => {
 			.then(() => operation.call(...args))
 			.then(result => assert.equal(result.toNumber(), stages.PENDING_FINISH))
 		
-			// .then(() => contracts.jobController.confirmEndWork(jobId, { from: client, }))
+			// .then(() => contracts.jobController.acceptWorkResults(jobId, { from: client, }))
 			// .then(() => operation.call(...args))
 			// .then(result => assert.equal(result.toNumber(), stages.FINISHED))
 		
@@ -448,21 +448,21 @@ contract("JobController workflows", accounts => {
 		}
 		
 		this._testEndWorking = () => {
-			it("should NOT emit any event on requesting end of work by a worker", async () => {
+			it("should emit 'EndWorkRequested' event on requesting end of work by a worker", async () => {
 				const tx = await contracts.jobController.endWork(jobId, { from: worker, })
-				const events = eventsHelper.extractEvents(tx, "WorkFinished")
-				assert.equal(events.length, 0)
+				const events = eventsHelper.extractEvents(tx, "EndWorkRequested")
+				assert.equal(events.length, 1)
 			})
 		}
 		
-		this._testConfirmEndWork = () => {
-			it("should emit 'WorkFinished' event on confirming work ended by a client", async () => {
-				const tx = await contracts.jobController.confirmEndWork(jobId, { from: client, })
+		this._testacceptWorkResults = () => {
+			it("should emit 'WorkAccepted' event on confirming work ended by a client", async () => {
+				const tx = await contracts.jobController.acceptWorkResults(jobId, { from: client, })
 				
-				const events = eventsHelper.extractEvents(tx, "WorkFinished")
+				const events = eventsHelper.extractEvents(tx, "WorkAccepted")
 				assert.equal(events.length, 1);
 				assert.equal(events[0].address, contracts.multiEventsHistory.address);
-				assert.equal(events[0].event, 'WorkFinished');
+				assert.equal(events[0].event, 'WorkAccepted');
 				
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
@@ -973,11 +973,11 @@ contract("JobController workflows", accounts => {
 					})
 	
 					it("should NOT be able to confirm work was ended by non-client with JOB_CONTROLLER_INVALID_ROLE code", async () => {
-						assert.equal((await contracts.jobController.confirmEndWork.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
+						assert.equal((await contracts.jobController.acceptWorkResults.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
 					})
 	
 					it("should be able to confirm work was ended by a client with OK code", async () => {
-						assert.equal((await contracts.jobController.confirmEndWork.call(jobId, { from: client, })).toNumber(), ErrorsNamespace.OK)
+						assert.equal((await contracts.jobController.acceptWorkResults.call(jobId, { from: client, })).toNumber(), ErrorsNamespace.OK)
 					})
 	
 					it("should be able to release payment after job is done", async () => {
@@ -1040,7 +1040,7 @@ contract("JobController workflows", accounts => {
 				});
 
 				it('should allow client to confirm end work only when job has PENDING_FINISH status', async () => {
-					const operation = contracts.jobController.confirmEndWork;
+					const operation = contracts.jobController.acceptWorkResults;
 					const args = [jobId, { from: client, }];
 					const results = {
 						PENDING_FINISH: ErrorsNamespace.OK,
@@ -1105,7 +1105,7 @@ contract("JobController workflows", accounts => {
 				})
 
 				it("should NOT be able able to cancel after client had confirmed that job is ended with JOB_CONTROLLER_INVALID_STATE code", async () => {
-					await contracts.jobController.confirmEndWork(jobId, { from: client, })
+					await contracts.jobController.acceptWorkResults(jobId, { from: client, })
 					assert.equal((await contracts.jobsDataProvider.getJobState.call(jobId)).toNumber(), JobState.FINISHED)
 					assert.equal(
 						(await contracts.jobController.cancelJob.call(jobId, { from: client, })).toNumber(),
@@ -1119,7 +1119,7 @@ contract("JobController workflows", accounts => {
 				})
 
 				it("should be able to release payment after client had confirmed that job is ended", async () => {
-					await contracts.jobController.confirmEndWork(jobId, { from: client, })
+					await contracts.jobController.acceptWorkResults(jobId, { from: client, })
 					await contracts.jobController.releasePayment(jobId)
 					assert.equal((await contracts.jobsDataProvider.getJobState.call(jobId)).toNumber(), JobState.FINALIZED)
 				})
@@ -1260,7 +1260,7 @@ contract("JobController workflows", accounts => {
 					eventsTester._testSubmitTimeRequest()
 					eventsTester._testRejectTimeRequest()
 					eventsTester._testEndWorking()
-					eventsTester._testConfirmEndWork()
+					eventsTester._testacceptWorkResults()
 					eventsTester._testReleasePayment()
 				})
 
@@ -1277,7 +1277,7 @@ contract("JobController workflows", accounts => {
 					eventsTester._testSubmitTimeRequest()
 					eventsTester._testRejectTimeRequest()
 					eventsTester._testEndWorking()
-					eventsTester._testConfirmEndWork()
+					eventsTester._testacceptWorkResults()
 					eventsTester._testReleasePayment()
 				})
 			})
@@ -1365,7 +1365,7 @@ contract("JobController workflows", accounts => {
 				})
 			})
 
-			describe.only("when releasing payment", () => {
+			describe("when releasing payment", () => {
 				var payment
 
 				beforeEach(async () => {
@@ -1534,7 +1534,7 @@ contract("JobController workflows", accounts => {
 		})
 	})
 
-	context("Fixed priced", () => {
+	context.only("Fixed priced", () => {
 		const jobFlow = Workflow.FIXED_PRICE
 
 		context("Job posting", () => {
@@ -1838,8 +1838,8 @@ contract("JobController workflows", accounts => {
 
 				it("should NOT be able to confirm work was ended by anyone with JOB_CONTROLLER_INVALID_WORKFLOW_TYPE code", async () => {
 					assert.equal(
-						(await contracts.jobController.confirmEndWork.call(jobId, { from: client, })).toNumber(),
-						ErrorsNamespace.JOB_CONTROLLER_INVALID_WORKFLOW_TYPE
+						(await contracts.jobController.acceptWorkResults.call(jobId, { from: stranger, })).toNumber(),
+						ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE
 					)
 				})
 
@@ -1857,7 +1857,7 @@ contract("JobController workflows", accounts => {
 					)
 				})
 
-				it("should allow to accept work results by the worker with OK code", async () => {
+				it("should allow to accept work results by the client with OK code", async () => {
 					assert.equal(
 						(await contracts.jobController.acceptWorkResults.call(jobId, { from: client, })).toNumber(),
 						ErrorsNamespace.OK
@@ -2208,10 +2208,20 @@ contract("JobController workflows", accounts => {
 					)
 				})
 
-				it("should NOT be able to resolve rejected case in worker's favor with overflown value", async () => {
-					await asserts.throws(
-						contracts.jobController.resolveWorkDispute(jobId, workerRate + 1, 0)
+				it("should NOT be able to resolve rejected case in worker's favor with JOB_CONTROLLER_INVALID_WORKER_PAYCHECK_VALUE code", async () => {
+					assert.equal(
+						(await contracts.jobController.resolveWorkDispute.call(jobId, workerRate + 1, 0)).toString(16),
+						ErrorsNamespace.JOB_CONTROLLER_INVALID_WORKER_PAYCHECK_VALUE.toString(16)
 					)
+					assert.equal(
+						(await contracts.paymentGateway.getBalance.call(jobId)).toString(16),
+						workerRate.toString(16)
+					)
+				})
+
+				it("should NOT be able to resolve rejected case in worker's favor with JOB_CONTROLLER_INVALID_WORKER_PAYCHECK_VALUE code", async () => {
+					await contracts.jobController.resolveWorkDispute(jobId, workerRate + 1, 0)
+
 					assert.equal(
 						(await contracts.paymentGateway.getBalance.call(jobId)).toString(16),
 						workerRate.toString(16)

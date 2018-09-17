@@ -28,7 +28,7 @@ contract('Integration tests (user stories)', (accounts) => {
         PENDING_START: 2**2, 
         STARTED: 2**3, 
         PENDING_FINISH: 2**4, 
-        FINISHED: 2**5, 
+        FINISHED: 2**6, // DEPRECATED: see WORK_ACCEPTED
         WORK_ACCEPTED: 2**6, 
         WORK_REJECTED: 2**7, 
         FINALIZED: 2**8,
@@ -468,7 +468,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await contracts.jobController.confirmStartWork(job.id, { from: users.client })
                 await helpers.increaseTime(4*60*60) // 4 hours
                 await contracts.jobController.endWork(job.id, { from: users.worker })
-                await contracts.jobController.confirmEndWork(job.id, { from: users.client })
+                await contracts.jobController.acceptWorkResults(job.id, { from: users.client })
 
                 const workerEthBalance = await helpers.getEthBalance(users.worker)
 
@@ -517,7 +517,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("the other worker should be able to finish the job", async () => {
                 await contracts.jobController.endWork(otherJob.id, { from: users.worker2 })
-                await contracts.jobController.confirmEndWork(otherJob.id, { from: users.client })
+                await contracts.jobController.acceptWorkResults(otherJob.id, { from: users.client })
 
                 const jobState = await contracts.jobsDataProvider.getJobState.call(otherJob.id)
                 assert.equal(jobState, JobState.FINISHED)
@@ -559,7 +559,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await contracts.jobController.confirmStartWork(job.id, { from: users.client })
                 await helpers.increaseTime(2*60*60) // 2 hours
                 await contracts.jobController.endWork(job.id, { from: users.worker })
-                await contracts.jobController.confirmEndWork(job.id, { from: users.client })
+                await contracts.jobController.acceptWorkResults(job.id, { from: users.client })
 
                 await contracts.jobController.releasePayment(job.id, { from: users.default })
             })
@@ -754,7 +754,7 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("should have confirmation about finishing work from client", async () => {
-                await contracts.jobController.confirmEndWork(job.id, { from: users.client })
+                await contracts.jobController.acceptWorkResults(job.id, { from: users.client })
 
                 assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), JobState.FINISHED)
             })
@@ -985,7 +985,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("should be able to finish work", async () => {
                 await contracts.jobController.endWork(job.id, { from: users.worker })
-                await contracts.jobController.confirmEndWork(job.id, { from: users.client })
+                await contracts.jobController.acceptWorkResults(job.id, { from: users.client })
 
                 initialWorkerBalance = await helpers.getEthBalance(users.worker)
                 await contracts.jobController.releasePayment(job.id, { from: users.default })
@@ -1008,7 +1008,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await contracts.jobController.confirmStartWork(otherJob.id, { from: users.client })
                 await helpers.increaseTime(4*(8*60*60)) // 4 working day
                 await contracts.jobController.endWork(otherJob.id, { from: users.worker2 })
-                await contracts.jobController.confirmEndWork(otherJob.id, { from: users.client })
+                await contracts.jobController.acceptWorkResults(otherJob.id, { from: users.client })
 
                 initialWorker2Balance = await helpers.getEthBalance(users.worker2)
 
@@ -1079,7 +1079,7 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("should not be able to leave feedback after confirming work end with RATING_AND_REPUTATION_CANNOT_SET_RATING code", async () => {
-                await contracts.jobController.confirmEndWork(job.id, { from: users.client })
+                await contracts.jobController.acceptWorkResults(job.id, { from: users.client })
 
                 assert.equal((await contracts.ratingLibrary.setJobRating.call(users.client, expectedJobRating[users.client], job.id, { from: users.worker })).toNumber(), ErrorsScope.RATING_AND_REPUTATION_CANNOT_SET_RATING)
             })

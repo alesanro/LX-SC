@@ -107,7 +107,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(() => jobController.startWork(jobId, {from: _worker}))
     .then(() => jobController.confirmStartWork(jobId, {from: _client}))
     .then(() => jobController.endWork(jobId, {from: _worker}))
-    .then(() => jobController.confirmEndWork(jobId, {from: _client}))
+    .then(() => jobController.acceptWorkResults(jobId, {from: _client}))
     .then(() => jobController.releasePayment(jobId))
     .then(tx => eventsHelper.extractEvents(tx, "PaymentReleased"))
     .then(events => assert.equal(events.length, 1))
@@ -706,7 +706,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => call(...args))
       .then(() => jobController.endWork(jobId, {from: worker}))
       .then(() => call(...args))
-      .then(() => jobController.confirmEndWork(jobId, {from: client}))
+      .then(() => jobController.acceptWorkResults(jobId, {from: client}))
       .then(() => jobsDataProvider.getJobState(jobId))
       .then(asserts.equal(JOB_STATES.FINISHED))  // Ensure all previous stage changes was successful
       .then(() => call(...args))
