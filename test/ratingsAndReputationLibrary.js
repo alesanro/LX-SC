@@ -60,7 +60,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     PENDING_START: 2**2, 
     STARTED: 2**3, 
     PENDING_FINISH: 2**4, 
-    FINISHED: 2**5, 
+    FINISHED: 2**6, // DEPRECATED: see WORK_ACCEPTED
     WORK_ACCEPTED: 2**6, 
     WORK_REJECTED: 2**7, 
     FINALIZED: 2**8,
