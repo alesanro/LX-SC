@@ -27,6 +27,7 @@ Build&TEST:
     - npm install eslint@^4.9.0 truffle-hdwallet-provider@0.0.3
     - export NODE_OPTIONS="--max_old_space_size=4096"
     - export PATH=$PATH:$(pwd)/node_modules/.bin
+    - npm install
     - npm run testrpc > /dev/null &
     - sleep 5
     - npx truffle test
