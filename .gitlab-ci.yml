@@ -13,38 +13,24 @@ cache:
   paths:
     - node_modules/
 
-Build:
+Build&TEST:
   stage: build
   image: node:8.11-slim
 
   variables:
     DOCKER_DRIVER: overlay2
-
+  retry: 2
   script:
     - apt update
     - apt install -y python make g++ git build-essential
     - npm install --save-dev -g pm2@2.7.1 nyc mocha npx
-    - npm install eslint@^4.9.0
-
-  artifacts:
-    paths:
-      - node_modules/
-    expire_in: "3 day"
-
-Test:
-  stage: test
-  image: node:8.11-slim
-
-  variables:
-    DOCKER_DRIVER: overlay2
-
-  script:
+    - npm install eslint@^4.9.0 truffle-hdwallet-provider@0.0.3
     - export NODE_OPTIONS="--max_old_space_size=4096"
     - export PATH=$PATH:$(pwd)/node_modules/.bin
-    - npm install -g truffle-hdwallet-provider@0.0.3
     - npm run testrpc > /dev/null &
     - sleep 5
     - npx truffle test
+
 
   artifacts:
     paths:
