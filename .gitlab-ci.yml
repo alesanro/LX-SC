@@ -33,8 +33,7 @@ Build&TEST:
     - sleep 5
     - npx truffle test
     - kill -9 $(ps aux | grep node | awk '{print$2}')
-    #- kill -9 $(ps aux | grep testrpc | awk '{print$2}')
-    - exit 0
+    #- exit 0
 
   artifacts:
     paths:
