@@ -148,7 +148,7 @@ contract('JobController', function(accounts) {
 
       .then(() => jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, {from: worker}))
       .then(async () => {
-        const payment = await jobController.calculateLockAmountFor(worker, jobId)
+        const payment = await jobsDataProvider.calculateLockAmountFor(worker, jobId)
         return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
       })
       .then(() => operation.call(...args))
@@ -200,7 +200,7 @@ contract('JobController', function(accounts) {
     await jobController.postJobOffer(
       jobId, offer.workerRate, offer.jobEstimate, offer.workerOnTop, {from: worker}
     )
-    const payment = await jobController.calculateLockAmountFor(worker, jobId)
+    const payment = await jobsDataProvider.calculateLockAmountFor(worker, jobId)
     await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 
     const clientBalanceBefore = await paymentGateway.getBalance(client)
@@ -585,7 +585,7 @@ contract('JobController', function(accounts) {
       return Promise.resolve()
         .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(async () => {
-          const payment = await jobController.calculateLockAmountFor.call(worker, 1)
+          const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, 1)
           return await jobController.acceptOffer.call(1, worker, { from: client, value: payment, })
         })
         .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_WORKER_RATE_NOT_SET))
@@ -601,7 +601,7 @@ contract('JobController', function(accounts) {
         .then(() => asserts.throws(
           Promise.resolve()
           .then(async () => {
-            const payment = await jobController.calculateLockAmountFor.call(worker, 1)
+            const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, 1)
             return await jobController.acceptOffer.call(1, worker, { from: client, value: payment.minus(1), })
           })
         ));
@@ -621,7 +621,7 @@ contract('JobController', function(accounts) {
         .then(() => asserts.throws(
           Promise.resolve()
           .then(async () => {
-            const payment = await jobController.calculateLockAmountFor.call(worker, 1)
+            const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, 1)
             return await jobController.acceptOffer.call(1, worker, { from: client, value: payment, })
           })
         ));
@@ -639,7 +639,7 @@ contract('JobController', function(accounts) {
         .then(assert.isTrue)
         .then(() => paymentProcessor.approve(1))
         .then(async () => {
-          const payment = await jobController.calculateLockAmountFor.call(worker, 1)
+          const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, 1)
           return await jobController.acceptOffer.call(1, worker, { from: client, value: payment, })
         })
         .then((code) => assert.equal(code, ErrorsNamespace.OK))
@@ -656,7 +656,7 @@ contract('JobController', function(accounts) {
       {
         const caller = worker 
         const beforeCallerBalance = await helpers.getEthBalance(caller)
-        const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+        const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
         const tx = await jobController.acceptOffer(jobId, worker, { from: caller, value: payment, })
         const txExpenses = await helpers.getTxExpences(tx.tx)
         const afterCallerBalance = await helpers.getEthBalance(caller)
@@ -687,7 +687,7 @@ contract('JobController', function(accounts) {
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
         .then(async () => {
-          const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+          const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
         .then(() => paymentGateway.getBalance(client))
@@ -718,12 +718,12 @@ contract('JobController', function(accounts) {
         .then(() => jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}))
         .then(() => jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, {from: worker}))
         .then(async () => {
-          const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+          const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer.call(jobId, worker, { from: stranger, value: payment, })
         })
         .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
         .then(async () => {
-          const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+          const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
         .then(() => jobController.cancelJob.call(jobId, {from: client}))
@@ -768,12 +768,12 @@ contract('JobController', function(accounts) {
         .then(tx => eventsHelper.extractEvents(tx, "TimeRequestSubmitted"))
         .then(events => assert.equal(events.length, 1))
         .then(async () => {
-          const additionalPayment = await jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+          const additionalPayment = await jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
           return await jobController.acceptAdditionalTimeRequest.call(jobId, additionalTime, { from: stranger, value: additionalPayment, })
         })
         .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
         .then(async () => {
-          const additionalPayment = await jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+          const additionalPayment = await jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
           return await jobController.acceptAdditionalTimeRequest(jobId, additionalTime, { from: client, value: additionalPayment, })
         })
         .then(tx => eventsHelper.extractEvents(tx, "TimeRequestAccepted"))
@@ -902,7 +902,7 @@ contract('JobController', function(accounts) {
         .then(() => jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}))
         .then(() => jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, {from: worker}))
         .then(async () => {
-          const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+          const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
         .then(() => jobController.startWork(jobId, {from: worker}))
@@ -931,7 +931,7 @@ contract('JobController', function(accounts) {
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
         .then(async () => {
-          const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+          const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
         .then(() => jobController.startWork(jobId, {from: worker}))
@@ -955,7 +955,7 @@ contract('JobController', function(accounts) {
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
         .then(async () => {
-          const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+          const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
         .then(() => jobController.startWork(jobId, {from: worker}))
@@ -1018,7 +1018,7 @@ contract('JobController', function(accounts) {
         })
         // Accept job offer
         .then(async () => {
-          const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+          const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
         .then(tx => eventsHelper.extractEvents(tx, "JobOfferAccepted"))
@@ -1091,7 +1091,7 @@ contract('JobController', function(accounts) {
           assert.equal(log.time.toString(), additionalTime.toString());
         })
         .then(async () => {
-          const additionalPayment = await jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+          const additionalPayment = await jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
           return await jobController.acceptAdditionalTimeRequest(jobId, additionalTime, { from: client, value: additionalPayment, })
         })
         .then(tx => eventsHelper.extractEvents(tx, "TimeRequestAccepted"))
@@ -1189,7 +1189,7 @@ contract('JobController', function(accounts) {
         })
         // Accept job offer
         .then(async () => {
-          const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+          const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
         .then(tx => eventsHelper.extractEvents(tx, "JobOfferAccepted"))
@@ -1317,7 +1317,7 @@ contract('JobController', function(accounts) {
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
         .then(async () => {
-          const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+          const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
         .then(() => paymentProcessor.enableServiceMode())
@@ -1340,7 +1340,7 @@ contract('JobController', function(accounts) {
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
         .then(async () => {
-          const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+          const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
         .then(() => paymentProcessor.enableServiceMode())
@@ -1362,7 +1362,7 @@ contract('JobController', function(accounts) {
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
         .then(async () => {
-          const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+          const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
         .then(() => jobController.startWork(jobId, {from: worker}))
@@ -1389,7 +1389,7 @@ contract('JobController', function(accounts) {
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
         .then(async () => {
-          const payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+          const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
         .then(() => jobController.startWork(jobId, {from: worker}))
@@ -1423,7 +1423,7 @@ contract('JobController', function(accounts) {
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
         .then(async () => {
-          payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+          payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
         .then(() => helpers.getEthBalance(client))
@@ -1457,7 +1457,7 @@ contract('JobController', function(accounts) {
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
         .then(async () => {
-          payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+          payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
         .then(() => jobController.startWork(jobId, {from: worker}))
@@ -1493,7 +1493,7 @@ contract('JobController', function(accounts) {
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
         .then(async () => {
-          payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+          payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
         .then(() => jobController.startWork(jobId, {from: worker}))
@@ -1531,7 +1531,7 @@ contract('JobController', function(accounts) {
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
         .then(async () => {
-          payment = await jobController.calculateLockAmountFor.call(worker, jobId)
+          payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
         .then(() => jobController.startWork(jobId, {from: worker}))
@@ -1583,7 +1583,7 @@ contract('JobController', function(accounts) {
         offer: workerOffer, 
         beforeEndWorkHook: async (jobId) => {
           await jobController.submitAdditionalTimeRequest(jobId, additionalTime, { from: worker, })
-          const additionalPayment = await jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+          const additionalPayment = await jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
           await jobController.acceptAdditionalTimeRequest(jobId, additionalTime, { from: client, value: additionalPayment, })
           
           await helpers.increaseTime(additionalTime * 60)
@@ -1713,7 +1713,7 @@ contract('JobController', function(accounts) {
 
       {
         const jobId = 3
-        var payment = await jobController.calculateLockAmountFor(worker, jobId)
+        var payment = await jobsDataProvider.calculateLockAmountFor(worker, jobId)
         await jobController.acceptOffer(jobId, worker, { from: client2, value: payment, })
         await jobController.startWork(jobId, { from: worker, })
         await jobController.confirmStartWork(jobId, { from: client2, })

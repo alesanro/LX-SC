@@ -122,7 +122,7 @@ contract("JobController workflows", accounts => {
 		
 			.then(() => contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, }))
 			.then(async () => {
-				const payment = await contracts.jobController.calculateLockAmountFor(worker, jobId)
+				const payment = await contracts.jobsDataProvider.calculateLockAmountFor(worker, jobId)
 				return await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 			})
 			.then(() => operation.call(...args))
@@ -178,7 +178,7 @@ contract("JobController workflows", accounts => {
 		assert.equal((await operation.call(...args)).toNumber(), stages.CREATED)
 	
 		await contracts.jobController.postJobOfferWithPrice(jobId, workerRate, { from: worker, })
-		const payment = await contracts.jobController.calculateLockAmountFor(worker, jobId)
+		const payment = await contracts.jobsDataProvider.calculateLockAmountFor(worker, jobId)
 		await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 		assert.equal((await operation.call(...args)).toNumber(), stages.OFFER_ACCEPTED)
 	
@@ -229,7 +229,7 @@ contract("JobController workflows", accounts => {
 		
 		await contracts.jobController.postJob(Workflow.TM_WITHOUT_CONFIRMATION, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 		await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
-		const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+		const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 		await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 
 		await assertInternalBalance(client, clientBalanceBefore)
@@ -327,7 +327,7 @@ contract("JobController workflows", accounts => {
 
 		this._testJobOfferAccepted = () => {
 			it("should emit 'JobOfferAccepted' event on accepting an offer", async () => {
-				const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+				const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 				const tx = await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 				
 				const events = eventsHelper.extractEvents(tx, "JobOfferAccepted")
@@ -415,7 +415,7 @@ contract("JobController workflows", accounts => {
 		this._testAcceptTimeRequest = () => {
 			it("should emit 'TimeRequestAccepted' event on accepting more time request", async () => {
 				const additionalTime = 60
-				const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+				const additionalPayment = await contracts.jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
 				const tx = await contracts.jobController.acceptAdditionalTimeRequest(jobId, additionalTime, { from: client, value: additionalPayment, })
 				
 				const events = eventsHelper.extractEvents(tx, "TimeRequestAccepted")
@@ -708,7 +708,7 @@ contract("JobController workflows", accounts => {
 				})
 
 				it('should NOT accept job offer for non-existent job worker', async () => {
-					const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					assert.equal(
 						(await contracts.jobController.acceptOffer.call(jobId, worker, { from: client, value: payment, })).toNumber(),
 						ErrorsNamespace.JOB_CONTROLLER_WORKER_RATE_NOT_SET
@@ -717,7 +717,7 @@ contract("JobController workflows", accounts => {
 
 				it('should THROW on `acceptOffer` if client sent insufficient funds', async () => {
 					await contracts.jobController.postJobOffer(jobId, '0xfffffffffffffffffff', 1, 1, { from: worker, })
-					const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					await asserts.throws(
 						contracts.jobController.acceptOffer.call(jobId, worker, { from: client, value: payment.minus(1), })
 					)
@@ -728,7 +728,7 @@ contract("JobController workflows", accounts => {
 					await contracts.jobController.postJobOffer(jobId, '0x12f2a36ecd555', 1, '0x12f2a36ecd555', { from: worker, })
 					await contracts.paymentProcessor.enableServiceMode()
 					assert.isTrue(await contracts.paymentProcessor.serviceMode.call())
-					const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					await asserts.throws(
 						contracts.jobController.acceptOffer.call(jobId, worker, { from: client, value: payment, })
 					)
@@ -743,7 +743,7 @@ contract("JobController workflows", accounts => {
 					await contracts.jobController.postJobOffer(jobId, '0x12f2a36ecd555', 1, '0x12f2a36ecd555', { from: worker, })
 					await contracts.paymentProcessor.enableServiceMode()
 					await contracts.paymentProcessor.approve(jobId)
-					const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					assert.equal(
 						(await contracts.jobController.acceptOffer.call(jobId, worker, { from: client, value: payment, })).toNumber(),
 						ErrorsNamespace.OK
@@ -765,7 +765,7 @@ contract("JobController workflows", accounts => {
 					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 					await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
 
-					const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 
 					assert.equal((await contracts.paymentGateway.getBalance(client)).toString(), '0')
@@ -798,7 +798,7 @@ contract("JobController workflows", accounts => {
 				describe("accepting offer", () => {
 					
 					it("should NOT allow to accept offer by non-client with JOB_CONTROLLER_INVALID_ROLE code", async () => {
-						const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+						const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 						assert.equal(
 							(await contracts.jobController.acceptOffer.call(jobId, worker, { from: stranger, value: payment, })).toNumber(),
 							ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE
@@ -806,7 +806,7 @@ contract("JobController workflows", accounts => {
 					})
 	
 					it("should allow to accept offer by a client", async () => {
-						const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+						const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 						await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 						assert.equal(await contracts.jobsDataProvider.getJobWorker.call(jobId), worker)
 					})
@@ -902,7 +902,7 @@ contract("JobController workflows", accounts => {
 					})
 	
 					it("should NOT allow to accept additional time request by a worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
-						const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+						const additionalPayment = await contracts.jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
 						assert.equal(
 							(await contracts.jobController.acceptAdditionalTimeRequest.call(jobId, additionalTime, { from: worker, value: additionalPayment, })).toString(16),
 							ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE.toString(16)
@@ -917,7 +917,7 @@ contract("JobController workflows", accounts => {
 					})
 					
 					it("should NOT allow to accept additional time request by a client with invalid additional time value with JOB_CONTROLLER_INCORRECT_TIME_PROVIDED code", async () => {
-						const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+						const additionalPayment = await contracts.jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
 						assert.equal(
 							(await contracts.jobController.acceptAdditionalTimeRequest.call(jobId, additionalTime + 1, { from: client, value: additionalPayment, })).toString(16),
 							ErrorsNamespace.JOB_CONTROLLER_INCORRECT_TIME_PROVIDED.toString(16)
@@ -925,20 +925,20 @@ contract("JobController workflows", accounts => {
 					})
 					
 					it("should THROW and NOT allow to accept additional time request by a client with invalid payment value with JOB_CONTROLLER_INVALID_ROLE code", async () => {
-						const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+						const additionalPayment = await contracts.jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
 						await asserts.throws(
 							contracts.jobController.acceptAdditionalTimeRequest.call(jobId, additionalTime, { from: client, value: additionalPayment.sub(1), })
 						)
 					})
 	
 					it("should allow to add more time by a client", async () => {
-						const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+						const additionalPayment = await contracts.jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
 						const tx = await contracts.jobController.acceptAdditionalTimeRequest(jobId, additionalTime, { from: client, value: additionalPayment, })
 						assert.equal(eventsHelper.extractEvents(tx, "TimeRequestAccepted").length, 1)
 					})
 	
 					it("should NOT allow to accept additional time request by a client twice with JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED code", async () => {
-						const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+						const additionalPayment = await contracts.jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
 						assert.equal(
 							(await contracts.jobController.acceptAdditionalTimeRequest.call(jobId, additionalTime, { from: client, value: additionalPayment, })).toString(16),
 							ErrorsNamespace.JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED.toString(16)
@@ -1087,7 +1087,7 @@ contract("JobController workflows", accounts => {
 				beforeEach(async () => {
 					await contracts.jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, { from: client, })
 					await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
-					const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           			await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 					await contracts.jobController.startWork(jobId, { from: worker, })
 					await contracts.jobController.confirmStartWork(jobId, { from: client, })
@@ -1136,7 +1136,7 @@ contract("JobController workflows", accounts => {
 			beforeEach(async () => {
 				await contracts.jobController.postJob(jobFlow, 4, 4, 7, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 				await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
-				const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+				const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 				await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 				await contracts.jobController.startWork(jobId, { from: worker, })
 			})
@@ -1184,7 +1184,7 @@ contract("JobController workflows", accounts => {
 
 				await contracts.jobController.submitAdditionalTimeRequest(jobId, additionalTime, { from: worker, })
 
-				const additionalPayment = await contracts.jobController.calculateLock.call(worker, jobId, additionalTime, 0)
+				const additionalPayment = await contracts.jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
 				await asserts.throws(
 					contracts.jobController.acceptAdditionalTimeRequest.call(jobId, additionalTime, { from: client, value: additionalPayment, })
 				)
@@ -1319,7 +1319,7 @@ contract("JobController workflows", accounts => {
 					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 					await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
 					
-					payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 				})
 
@@ -1372,7 +1372,7 @@ contract("JobController workflows", accounts => {
 					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 					await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
 
-					payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 				})
 
@@ -1625,7 +1625,7 @@ contract("JobController workflows", accounts => {
 				afterEach(async () => await reverter.revert())
 
 				it('should NOT accept job offer for non-existent job worker', async () => {
-					const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					assert.equal(
 						(await contracts.jobController.acceptOffer.call(jobId, worker, { from: client, value: payment, })).toNumber(),
 						ErrorsNamespace.JOB_CONTROLLER_WORKER_RATE_NOT_SET
@@ -1634,7 +1634,7 @@ contract("JobController workflows", accounts => {
 
 				it('should THROW on `acceptOffer` if client sent insufficient funds', async () => {
 					await contracts.jobController.postJobOfferWithPrice(jobId, '0xfffffffffffffffffff', { from: worker, })
-					const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					await asserts.throws(
 						contracts.jobController.acceptOffer.call(jobId, worker, { from: client, value: payment.minus(1), })
 					)
@@ -1644,7 +1644,7 @@ contract("JobController workflows", accounts => {
 					await contracts.jobController.postJobOfferWithPrice(jobId, '0x12f2a36ecd555', { from: worker, })
 					await contracts.paymentProcessor.enableServiceMode()
 					assert.isTrue(await contracts.paymentProcessor.serviceMode.call())
-					const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					await asserts.throws(
 						contracts.jobController.acceptOffer.call(jobId, worker, { from: client, value: payment, })
 					)
@@ -1661,7 +1661,7 @@ contract("JobController workflows", accounts => {
 					await contracts.jobController.postJobOfferWithPrice(jobId, '0x12f2a36ecd555', { from: worker, })
 					await contracts.paymentProcessor.enableServiceMode()
 					await contracts.paymentProcessor.approve(jobId)
-					const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					assert.equal(
 						(await contracts.jobController.acceptOffer.call(jobId, worker, { from: client, value: payment, })).toNumber(),
 						ErrorsNamespace.OK
@@ -1677,7 +1677,7 @@ contract("JobController workflows", accounts => {
 					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 					await contracts.jobController.postJobOfferWithPrice(jobId, price, { from: worker, })
 
-					const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 
 					assert.equal((await contracts.paymentGateway.getBalance(client)).toString(), '0')
@@ -1704,7 +1704,7 @@ contract("JobController workflows", accounts => {
 				after(async () => await reverter.revert())
 
 				it("should NOT allow to accept offer by non-client with JOB_CONTROLLER_INVALID_ROLE code", async () => {
-					const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					assert.equal(
 						(await contracts.jobController.acceptOffer.call(jobId, worker, { from: stranger, value: payment, })).toNumber(),
 						ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE
@@ -1719,7 +1719,7 @@ contract("JobController workflows", accounts => {
 				})
 
 				it("should allow to accept offer by a client", async () => {
-					const payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 					assert.equal(await contracts.jobsDataProvider.getJobWorker.call(jobId), worker)
 				})
@@ -2035,7 +2035,7 @@ contract("JobController workflows", accounts => {
 				before(async () => {
 					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 					await contracts.jobController.postJobOfferWithPrice(jobId, workerRate, { from: worker, })
-					payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 					await contracts.jobController.startWork(jobId, { from: worker, })
 					await timeOps()
@@ -2090,7 +2090,7 @@ contract("JobController workflows", accounts => {
 				before(async () => {
 					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 					await contracts.jobController.postJobOfferWithPrice(jobId, workerRate, { from: worker, })
-					payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 					await contracts.jobController.startWork(jobId, { from: worker, })
 					await timeOps()
@@ -2127,7 +2127,7 @@ contract("JobController workflows", accounts => {
 				beforeEach(async () => {
 					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 					await contracts.jobController.postJobOfferWithPrice(jobId, workerRate, { from: worker, })
-					payment = await contracts.jobController.calculateLockAmountFor.call(worker, jobId)
+					payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 					await contracts.jobController.startWork(jobId, { from: worker, })
 					await timeOps()
