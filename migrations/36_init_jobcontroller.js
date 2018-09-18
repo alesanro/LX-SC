@@ -1,5 +1,9 @@
 "use strict";
 const JobController = artifacts.require('./JobController.sol');
+const JobWorkInitiationControllerLib = artifacts.require("JobWorkInitiationControllerLib")
+const JobWorkProcessControllerLib = artifacts.require("JobWorkProcessControllerLib")
+const JobWorkAcceptanceControllerLib = artifacts.require("JobWorkAcceptanceControllerLib")
+const JobsDataProvider = artifacts.require('JobsDataProvider');
 
 const Roles2Library = artifacts.require('./Roles2Library.sol');
 const UserLibrary = artifacts.require('./UserLibrary.sol');
@@ -23,6 +27,14 @@ module.exports = deployer => {
     .then(() => jobController.setupEventsHistory(MultiEventsHistory.address))
     .then(() => jobController.setPaymentProcessor(PaymentProcessor.address))
     .then(() => jobController.setUserLibrary(UserLibrary.address))
+    .then(async () => {
+        await jobController.linkJobLibs(
+            JobWorkInitiationControllerLib.address, 
+            JobWorkProcessControllerLib.address, 
+            JobWorkAcceptanceControllerLib.address
+        )
+        await jobController.setJobsDataProvider(JobsDataProvider.address)
+    })
     .then(() => Roles2Library.deployed())
     .then(_roles2Library => rolesLibrary = _roles2Library)
     .then(() => PaymentProcessor.deployed())

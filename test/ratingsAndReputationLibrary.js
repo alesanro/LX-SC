@@ -95,7 +95,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       jobId, 100, 100, 100, {from: _worker}
     ))
     .then(async () => {
-      const payment = await jobController.calculateLockAmountFor.call(_worker, jobId)
+      const payment = await jobsDataProvider.calculateLockAmountFor.call(_worker, jobId)
       return await jobController.acceptOffer(jobId, _worker, { from: _client, value: payment, })
     })
     .then(() => ignoreSkillsCheck(false))
