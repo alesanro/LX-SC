@@ -11,6 +11,7 @@ import "solidity-roles-lib/contracts/Roles2LibraryAdapter.sol";
 import "solidity-eventshistory-lib/contracts/MultiEventsHistoryAdapter.sol";
 import "./base/BitOps.sol";
 import "./JobDataCore.sol";
+import "./JobsDataProvider.sol";
 
 
 contract UserLibraryInterface {
@@ -69,6 +70,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
 
     PaymentProcessorInterface public paymentProcessor;
     UserLibraryInterface public userLibrary;
+    JobsDataProvider public jobsDataProvider;
 
     modifier onlyClient(uint _jobId) {
         if (store.get(jobClient, _jobId) != msg.sender) {
@@ -213,116 +215,9 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         return OK;
     }
 
-    function calculateLock(address worker, uint _jobId, uint _time, uint _onTop) public view returns (uint) {
-        // Lock additional working hour + 10% of resulting amount
-        uint rate = store.get(jobOfferRate, _jobId, worker);
-        return ((rate * (_time) + _onTop) * 11) / 10;
-    }
-
-    function calculateLockAmount(uint _jobId) public view returns (uint) {
-        address worker = store.get(jobWorker, _jobId);
-        // Lock additional working hour + 10% of resulting amount
-        return calculateLockAmountFor(worker, _jobId);
-    }
-
-    function calculateLockAmountFor(address worker, uint _jobId) public view returns (uint) {
-        uint _flow = store.get(jobWorkflowType, _jobId);
-        if (_hasFlag(_flow, WORKFLOW_TM)) {
-            uint onTop = store.get(jobOfferOntop, _jobId, worker);
-            return calculateLock(worker, _jobId, store.get(jobOfferEstimate, _jobId, worker) + 60, onTop);
-        } else if (_hasFlag(_flow, WORKFLOW_FIXED_PRICE)) {
-            return store.get(jobOfferRate, _jobId, worker);
-        }
-
-        assert(false); // NOTE: need to update; other types of workflow is not supported right now
-    }
-
-    function calculatePaycheck(uint _jobId) public view returns (uint) {
-        uint _flow = store.get(jobWorkflowType, _jobId);
-
-        if (_hasFlag(_flow, WORKFLOW_TM)) {
-            return _calculatePaycheckForTM(_jobId);
-        } else if (_hasFlag(_flow, WORKFLOW_FIXED_PRICE)) {
-            return _calculatePaycheckForFixedPrice(_jobId);
-        }
-
-        assert(false); /// NOTE: need to update; other types of workflow is not supported right now
-    }
-
-    function _calculatePaycheckForTM(uint _jobId) private view returns (uint) {
-        address worker = store.get(jobWorker, _jobId);
-        uint _jobState = _getJobState(_jobId);
-        uint _flow = store.get(jobWorkflowType, _jobId);
-        bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
-        if (_isFinishedStateForFlow(_flow, _jobState)) {
-            // Means that participants have agreed on job completion,
-            // reward should be calculated depending on worker's time spent.
-            uint maxEstimatedTime = store.get(jobOfferEstimate, _jobId, worker) + 60;
-            uint timeSpent = ((_needsConfirmation ? store.get(jobFinishTime, _jobId) : store.get(jobPendingFinishAt, _jobId)) -
-                            (_needsConfirmation ? store.get(jobStartTime, _jobId) : store.get(jobPendingStartAt, _jobId)) -
-                            store.get(jobPausedFor, _jobId)) / 60;
-            if (timeSpent > 60 && timeSpent <= maxEstimatedTime) {
-                // Worker was doing the job for more than an hour, but less then
-                // maximum estimated working time. Release money for the time
-                // he has actually worked + "on top" expenses.
-                return timeSpent * store.get(jobOfferRate, _jobId, worker) +
-                       store.get(jobOfferOntop, _jobId, worker);
-
-            } else if (timeSpent > maxEstimatedTime) {
-                // Means worker has gone over maximum estimated time and hasnt't
-                // requested more time, which is his personal responsibility, since
-                // we're already giving workers additional working hour from start.
-                // So we release money for maximum estimated working time + "on top".
-                return maxEstimatedTime * store.get(jobOfferRate, _jobId, worker) +
-                       store.get(jobOfferOntop, _jobId, worker);
-
-            } else {
-                // Worker has completed the job within just an hour, so we
-                // release money for the minumum 1 working hour + "on top".
-                return 60 * store.get(jobOfferRate, _jobId, worker) +
-                       store.get(jobOfferOntop, _jobId, worker);
-            }
-        } else if (
-            _jobState == JOB_STATE_STARTED ||
-            (!_needsConfirmation && _jobState == JOB_STATE_PENDING_START) ||
-            (_needsConfirmation && _jobState == JOB_STATE_PENDING_FINISH)
-        ) {
-            // Job has been canceled right after start or right before completion,
-            // minimum of 1 working hour + "on top" should be released.
-            return store.get(jobOfferOntop, _jobId, worker) +
-                   store.get(jobOfferRate, _jobId, worker) * 60;
-        } else if (
-            _jobState == JOB_STATE_OFFER_ACCEPTED ||
-            (_needsConfirmation && _jobState == JOB_STATE_PENDING_START)
-        ) {
-            // Job hasn't even started yet, but has been accepted,
-            // release just worker "on top" expenses.
-            return store.get(jobOfferOntop, _jobId, worker);
-        }
-    }
-
-    function _calculatePaycheckForFixedPrice(uint _jobId) private view returns (uint) {
-        address worker = store.get(jobWorker, _jobId);
-        uint _jobState = _getJobState(_jobId);
-
-        if (_jobState == JOB_STATE_WORK_ACCEPTED) {
-            return store.get(jobOfferRate, _jobId, worker);
-        }
-    }
-
-    function _isValidEstimate(uint _rate, uint _estimate, uint _ontop) internal pure returns (bool) {
-        if (_rate == 0 || _estimate == 0) {
-            return false;
-        }
-        uint prev = 0;
-        for (uint i = 1; i <= _estimate + 60; i++) {
-            uint curr = prev + _rate;
-            if (curr < prev) {
-                return false;
-            }
-            prev = curr;
-        }
-        return ((prev + _ontop) / 10) * 11 > prev;
+    function setJobsDataProvider(JobsDataProvider _jobsDataProvider) auth external returns (uint) {
+        jobsDataProvider = _jobsDataProvider;
+        return OK;
     }
 
     /// @notice Creates and posts a new job to a job marketplace
@@ -372,7 +267,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     public
     returns (uint)
     {
-        if (!_isValidEstimate(_rate, _estimate, _ontop)) {
+        if (!jobsDataProvider._isValidEstimate(_rate, _estimate, _ontop)) {
             return _emitErrorCode(JOB_CONTROLLER_INVALID_ESTIMATE);
         }
 
@@ -444,7 +339,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         // Maybe incentivize by locking some money from worker?
         store.set(jobWorker, _jobId, _worker);
 
-        require(msg.value == calculateLockAmount(_jobId));
+        require(msg.value == jobsDataProvider.calculateLockAmount(_jobId));
 
         _resultCode = paymentProcessor.lockPayment.value(msg.value)(bytes32(_jobId), msg.sender);
         if (_resultCode != OK) {
@@ -611,7 +506,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     internal
     returns (bool)
     {
-        uint jobPaymentLocked = calculateLockAmount(_jobId);
+        uint jobPaymentLocked = jobsDataProvider.calculateLockAmount(_jobId);
         store.set(
             jobOfferEstimate,
             _jobId,
@@ -620,7 +515,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
         );
 
         require(
-            calculateLockAmount(_jobId) - jobPaymentLocked == msg.value, 
+            jobsDataProvider.calculateLockAmount(_jobId) - jobPaymentLocked == msg.value, 
             "JOB_CONTROLLER_INVALID_TIME_REQUEST_PAYMENT_VALUE"
         );
 
@@ -658,7 +553,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
             return _emitErrorCode(JOB_CONTROLLER_INVALID_STATE);
         }
 
-        uint payCheck = calculatePaycheck(_jobId);
+        uint payCheck = jobsDataProvider.calculatePaycheck(_jobId);
         address worker = store.get(jobWorker, _jobId);
 
         _resultCode = paymentProcessor.releasePayment(
@@ -715,7 +610,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     auth
     onlyJobState(_jobId, JOB_STATE_WORK_REJECTED)
     returns (uint _resultCode) {
-        uint payCheck = calculateLockAmount(_jobId);
+        uint payCheck = jobsDataProvider.calculateLockAmount(_jobId);
         if (payCheck < _workerPaycheck) {
             return _emitErrorCode(JOB_CONTROLLER_INVALID_WORKER_PAYCHECK_VALUE);
         }
@@ -762,7 +657,7 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
     public
     returns (uint _resultCode)
     {
-        uint payCheck = calculatePaycheck(_jobId);
+        uint payCheck = jobsDataProvider.calculatePaycheck(_jobId);
         address worker = store.get(jobWorker, _jobId);
 
         _resultCode = paymentProcessor.releasePayment(
@@ -866,61 +761,6 @@ contract JobController is JobDataCore, MultiEventsHistoryAdapter, Roles2LibraryA
 
     function _getJobState(uint _jobId) private view returns (uint) {
         return uint(store.get(jobState, _jobId));
-    }
-
-    function _isFinishedStateForFlow(uint _flow, uint _jobState) internal pure returns (bool) {
-        bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
-        uint _flowType = _flow & ~WORKFLOW_FEATURE_FLAGS;
-        if (_flowType == WORKFLOW_TM) {
-            if (_needsConfirmation && _jobState == JOB_STATE_WORK_ACCEPTED) {
-                return true;
-            }
-            
-            if (!_needsConfirmation &&
-                (_jobState == JOB_STATE_PENDING_FINISH || _jobState == JOB_STATE_WORK_ACCEPTED)
-            ) {
-                return true;
-            }
-        }
-
-        if (_flowType == WORKFLOW_FIXED_PRICE) {
-            if (_jobState == JOB_STATE_WORK_ACCEPTED) {
-                return true;
-            }
-        }
-    }
-
-    function _isStartedStateForFlow(uint _flow, uint _jobState) internal pure returns (bool) {
-        bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
-        if (_needsConfirmation && 
-        _jobState == JOB_STATE_STARTED) {
-            return true;
-        }
-
-        if (!_needsConfirmation &&
-            (_jobState == JOB_STATE_PENDING_START || _jobState == JOB_STATE_STARTED)
-        ) {
-            return true;
-        }
-    }
-
-    function _isActiveStateForFlow(uint _flow, uint _jobState) internal pure returns (bool) {
-        if (_jobState == JOB_STATE_OFFER_ACCEPTED) {
-            return true;
-        }
-        
-        if (_jobState == JOB_STATE_PENDING_START) {
-            return true;
-        }
-
-        if (_jobState == JOB_STATE_STARTED) {
-            return true;
-        }
-
-        bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
-        if (_needsConfirmation && _jobState == JOB_STATE_PENDING_FINISH) {
-            return true;
-        }
     }
 
     function _emitErrorCode(uint _errorCode) internal returns (uint) {

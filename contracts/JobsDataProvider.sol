@@ -300,4 +300,116 @@ contract JobsDataProvider is JobDataCore {
     function getFinalState(uint _jobId) public view returns (uint) {
         return store.get(jobFinalizedAt, _jobId);
     }
+
+    function calculateLock(address worker, uint _jobId, uint _time, uint _onTop) public view returns (uint) {
+        // Lock additional working hour + 10% of resulting amount
+        uint rate = store.get(jobOfferRate, _jobId, worker);
+        return ((rate * (_time) + _onTop) * 11) / 10;
+    }
+
+    function calculateLockAmount(uint _jobId) public view returns (uint) {
+        address worker = store.get(jobWorker, _jobId);
+        // Lock additional working hour + 10% of resulting amount
+        return calculateLockAmountFor(worker, _jobId);
+    }
+
+    function calculateLockAmountFor(address worker, uint _jobId) public view returns (uint) {
+        uint _flow = store.get(jobWorkflowType, _jobId);
+        if (_hasFlag(_flow, WORKFLOW_TM)) {
+            uint onTop = store.get(jobOfferOntop, _jobId, worker);
+            return calculateLock(worker, _jobId, store.get(jobOfferEstimate, _jobId, worker) + 60, onTop);
+        } else if (_hasFlag(_flow, WORKFLOW_FIXED_PRICE)) {
+            return store.get(jobOfferRate, _jobId, worker);
+        }
+
+        assert(false); // NOTE: need to update; other types of workflow is not supported right now
+    }
+
+    function calculatePaycheck(uint _jobId) public view returns (uint) {
+        uint _flow = store.get(jobWorkflowType, _jobId);
+
+        if (_hasFlag(_flow, WORKFLOW_TM)) {
+            return _calculatePaycheckForTM(_jobId);
+        } else if (_hasFlag(_flow, WORKFLOW_FIXED_PRICE)) {
+            return _calculatePaycheckForFixedPrice(_jobId);
+        }
+
+        assert(false); /// NOTE: need to update; other types of workflow is not supported right now
+    }
+
+    function _calculatePaycheckForTM(uint _jobId) private view returns (uint) {
+        address worker = store.get(jobWorker, _jobId);
+        uint _jobState = getJobState(_jobId);
+        uint _flow = store.get(jobWorkflowType, _jobId);
+        bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
+        if (_isFinishedStateForFlow(_flow, _jobState)) {
+            // Means that participants have agreed on job completion,
+            // reward should be calculated depending on worker's time spent.
+            uint maxEstimatedTime = store.get(jobOfferEstimate, _jobId, worker) + 60;
+            uint timeSpent = ((_needsConfirmation ? store.get(jobFinishTime, _jobId) : store.get(jobPendingFinishAt, _jobId)) -
+                            (_needsConfirmation ? store.get(jobStartTime, _jobId) : store.get(jobPendingStartAt, _jobId)) -
+                            store.get(jobPausedFor, _jobId)) / 60;
+            if (timeSpent > 60 && timeSpent <= maxEstimatedTime) {
+                // Worker was doing the job for more than an hour, but less then
+                // maximum estimated working time. Release money for the time
+                // he has actually worked + "on top" expenses.
+                return timeSpent * store.get(jobOfferRate, _jobId, worker) +
+                       store.get(jobOfferOntop, _jobId, worker);
+
+            } else if (timeSpent > maxEstimatedTime) {
+                // Means worker has gone over maximum estimated time and hasnt't
+                // requested more time, which is his personal responsibility, since
+                // we're already giving workers additional working hour from start.
+                // So we release money for maximum estimated working time + "on top".
+                return maxEstimatedTime * store.get(jobOfferRate, _jobId, worker) +
+                       store.get(jobOfferOntop, _jobId, worker);
+
+            } else {
+                // Worker has completed the job within just an hour, so we
+                // release money for the minumum 1 working hour + "on top".
+                return 60 * store.get(jobOfferRate, _jobId, worker) +
+                       store.get(jobOfferOntop, _jobId, worker);
+            }
+        } else if (
+            _jobState == JOB_STATE_STARTED ||
+            (!_needsConfirmation && _jobState == JOB_STATE_PENDING_START) ||
+            (_needsConfirmation && _jobState == JOB_STATE_PENDING_FINISH)
+        ) {
+            // Job has been canceled right after start or right before completion,
+            // minimum of 1 working hour + "on top" should be released.
+            return store.get(jobOfferOntop, _jobId, worker) +
+                   store.get(jobOfferRate, _jobId, worker) * 60;
+        } else if (
+            _jobState == JOB_STATE_OFFER_ACCEPTED ||
+            (_needsConfirmation && _jobState == JOB_STATE_PENDING_START)
+        ) {
+            // Job hasn't even started yet, but has been accepted,
+            // release just worker "on top" expenses.
+            return store.get(jobOfferOntop, _jobId, worker);
+        }
+    }
+
+    function _calculatePaycheckForFixedPrice(uint _jobId) private view returns (uint) {
+        address worker = store.get(jobWorker, _jobId);
+        uint _jobState = getJobState(_jobId);
+
+        if (_jobState == JOB_STATE_WORK_ACCEPTED) {
+            return store.get(jobOfferRate, _jobId, worker);
+        }
+    }
+
+    function isValidEstimate(uint _rate, uint _estimate, uint _ontop) public pure returns (bool) {
+        if (_rate == 0 || _estimate == 0) {
+            return false;
+        }
+        uint prev = 0;
+        for (uint i = 1; i <= _estimate + 60; i++) {
+            uint curr = prev + _rate;
+            if (curr < prev) {
+                return false;
+            }
+            prev = curr;
+        }
+        return ((prev + _ontop) / 10) * 11 > prev;
+    }
 }
