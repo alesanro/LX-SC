@@ -483,7 +483,8 @@ contract('JobController', function(accounts) {
         .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.OK))
     });
 
-    it("should check skills on posting job offer", () => {
+    // TODO: return back when skill check will be enabled
+    it.skip("should check skills on posting job offer", () => {
       return jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client})
         .then(() => ignoreSkillsCheck(false))
         .then(() => mock.expect(
@@ -498,13 +499,14 @@ contract('JobController', function(accounts) {
         .then(assertExpectations());
     });
 
-    it("should NOT post job offer if worker skills does not match", () => {
+    // TODO: return back when skill check will be enabled
+    it.skip("should NOT post job offer if worker skills does not match", () => {
       return jobController.setUserLibrary(userLibrary.address)
         .then(() => jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, 'Job details', {from: client}))
         .then(() => jobController.postJobOffer.call(
           1, 1000, 180, 1000, {from: worker})
         )
-        .then((code) => assert.equal(code, ErrorsNamespace.JOB_CONTROLLER_INVALID_SKILLS))
+        .then((code) => assert.equal(code.toString(16), ErrorsNamespace.JOB_CONTROLLER_INVALID_SKILLS.toString(16)))
     });
 
     it('should NOT allow to post a job offer to yourself', () => {

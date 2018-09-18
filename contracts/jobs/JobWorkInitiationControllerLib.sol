@@ -108,12 +108,14 @@ contract JobWorkInitiationControllerLib is Roles2LibraryAdapter, JobControllerAb
     }
 
     function _hasSkillsCheck(uint _jobId) internal view returns (bool) {
-        return userLibrary.hasSkills(
-            msg.sender,
-            store.get(jobSkillsArea, _jobId),
-            store.get(jobSkillsCategory, _jobId),
-            store.get(jobSkills, _jobId)
-        );
+        // TODO: remove after demo
+        // return userLibrary.hasSkills(
+        //     msg.sender,
+        //     store.get(jobSkillsArea, _jobId),
+        //     store.get(jobSkillsCategory, _jobId),
+        //     store.get(jobSkills, _jobId)
+        // );
+        return true;
     }
 
     function _addJobOffer(uint _jobId) private {
