@@ -1,0 +1,18 @@
+{
+	"accounts": {
+		"admin": "0x00bd07e19ff6257156ce71368c315e61f900142d",
+		"moderators": [
+			"0x005bd4cb3cb08f92a3f34fc5a970f133405188af"
+		],
+		"workers": [
+			"0x00aabd706f4ee7ec560517f82a1d492b21fef05e",
+			"0x003045868e9b5405f710643d1b31dab330b186ec"
+		],
+		"clients": [
+			"0x00b436db5bd741285b98d6bcf488eceadb4c410e"
+		],
+		"validators": [
+			"0x002abe91a1a77ea4c2529f9a3498dae735adac33"
+		]
+	}
+}

@@ -1,0 +1,849 @@
+{
+  "contractName": "ManagerMock",
+  "abi": [
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "deny",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "",
+          "type": "address"
+        },
+        {
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "isAllowed",
+      "outputs": [
+        {
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x608060405234801561001057600080fd5b50610102806100206000396000f30060806040526004361060485763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416635cb8dd098114604d578063a3fdfee314608f575b600080fd5b348015605857600080fd5b50607b73ffffffffffffffffffffffffffffffffffffffff6004351660243560a3565b604080519115158252519081900360200190f35b348015609a57600080fd5b5060a160c7565b005b6000805460ff161560bd57506000805460ff1916815560c1565b5060015b92915050565b6000805460ff191660011790555600a165627a7a72305820dace77a1ff5945d1c22f7de0b2c9a6cd1ded6578a37ca434667e322d1c94340f0029",
+  "deployedBytecode": "0x60806040526004361060485763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416635cb8dd098114604d578063a3fdfee314608f575b600080fd5b348015605857600080fd5b50607b73ffffffffffffffffffffffffffffffffffffffff6004351660243560a3565b604080519115158252519081900360200190f35b348015609a57600080fd5b5060a160c7565b005b6000805460ff161560bd57506000805460ff1916815560c1565b5060015b92915050565b6000805460ff191660011790555600a165627a7a72305820dace77a1ff5945d1c22f7de0b2c9a6cd1ded6578a37ca434667e322d1c94340f0029",
+  "sourceMap": "118:279:17:-;;;;8:9:-1;5:2;;;30:1;27;20:12;5:2;118:279:17;;;;;;;",
+  "deployedSourceMap": "118:279:17:-;;;;;;;;;;;;;;;;;;;;;;;;;;;;223:172;;8:9:-1;5:2;;;30:1;27;20:12;5:2;-1:-1;223:172:17;;;;;;;;;;;;;;;;;;;;;;;;;;;164:53;;8:9:-1;5:2;;;30:1;27;20:12;5:2;164:53:17;;;;;;223:172;275:4;295:6;;;;291:77;;;-1:-1:-1;326:5:17;317:14;;-1:-1:-1;;317:14:17;;;345:12;;291:77;-1:-1:-1;384:4:17;223:172;;;;;:::o;164:53::-;197:6;:13;;-1:-1:-1;;197:13:17;206:4;197:13;;;164:53::o",
+  "source": "/**\n * Copyright 2017–2018, LaborX PTY\n * Licensed under the AGPL Version 3 license.\n */\n\npragma solidity ^0.4.18;\n\ncontract ManagerMock {\n\n    bool denied;\n\n    function deny() public {\n        denied = true;\n    }\n\n    function isAllowed(address, bytes32) public returns(bool) {\n        if (denied) {\n            denied = false;\n            return false;\n        }\n        return true;\n    }\n}\n",
+  "sourcePath": "/Users/alesanro/Documents/Projects/ChronoBank/LX-SC/contracts/helpers/ManagerMock.sol",
+  "ast": {
+    "absolutePath": "/Users/alesanro/Documents/Projects/ChronoBank/LX-SC/contracts/helpers/ManagerMock.sol",
+    "exportedSymbols": {
+      "ManagerMock": [
+        9971
+      ]
+    },
+    "id": 9972,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 9939,
+        "literals": [
+          "solidity",
+          "^",
+          "0.4",
+          ".18"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "92:24:17"
+      },
+      {
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "documentation": null,
+        "fullyImplemented": true,
+        "id": 9971,
+        "linearizedBaseContracts": [
+          9971
+        ],
+        "name": "ManagerMock",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "constant": false,
+            "id": 9941,
+            "name": "denied",
+            "nodeType": "VariableDeclaration",
+            "scope": 9971,
+            "src": "146:11:17",
+            "stateVariable": true,
+            "storageLocation": "default",
+            "typeDescriptions": {
+              "typeIdentifier": "t_bool",
+              "typeString": "bool"
+            },
+            "typeName": {
+              "id": 9940,
+              "name": "bool",
+              "nodeType": "ElementaryTypeName",
+              "src": "146:4:17",
+              "typeDescriptions": {
+                "typeIdentifier": "t_bool",
+                "typeString": "bool"
+              }
+            },
+            "value": null,
+            "visibility": "internal"
+          },
+          {
+            "body": {
+              "id": 9948,
+              "nodeType": "Block",
+              "src": "187:30:17",
+              "statements": [
+                {
+                  "expression": {
+                    "argumentTypes": null,
+                    "id": 9946,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": false,
+                    "lValueRequested": false,
+                    "leftHandSide": {
+                      "argumentTypes": null,
+                      "id": 9944,
+                      "name": "denied",
+                      "nodeType": "Identifier",
+                      "overloadedDeclarations": [],
+                      "referencedDeclaration": 9941,
+                      "src": "197:6:17",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bool",
+                        "typeString": "bool"
+                      }
+                    },
+                    "nodeType": "Assignment",
+                    "operator": "=",
+                    "rightHandSide": {
+                      "argumentTypes": null,
+                      "hexValue": "74727565",
+                      "id": 9945,
+                      "isConstant": false,
+                      "isLValue": false,
+                      "isPure": true,
+                      "kind": "bool",
+                      "lValueRequested": false,
+                      "nodeType": "Literal",
+                      "src": "206:4:17",
+                      "subdenomination": null,
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bool",
+                        "typeString": "bool"
+                      },
+                      "value": "true"
+                    },
+                    "src": "197:13:17",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bool",
+                      "typeString": "bool"
+                    }
+                  },
+                  "id": 9947,
+                  "nodeType": "ExpressionStatement",
+                  "src": "197:13:17"
+                }
+              ]
+            },
+            "documentation": null,
+            "id": 9949,
+            "implemented": true,
+            "isConstructor": false,
+            "isDeclaredConst": false,
+            "modifiers": [],
+            "name": "deny",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 9942,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "177:2:17"
+            },
+            "payable": false,
+            "returnParameters": {
+              "id": 9943,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "187:0:17"
+            },
+            "scope": 9971,
+            "src": "164:53:17",
+            "stateMutability": "nonpayable",
+            "superFunction": null,
+            "visibility": "public"
+          },
+          {
+            "body": {
+              "id": 9969,
+              "nodeType": "Block",
+              "src": "281:114:17",
+              "statements": [
+                {
+                  "condition": {
+                    "argumentTypes": null,
+                    "id": 9958,
+                    "name": "denied",
+                    "nodeType": "Identifier",
+                    "overloadedDeclarations": [],
+                    "referencedDeclaration": 9941,
+                    "src": "295:6:17",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bool",
+                      "typeString": "bool"
+                    }
+                  },
+                  "falseBody": null,
+                  "id": 9966,
+                  "nodeType": "IfStatement",
+                  "src": "291:77:17",
+                  "trueBody": {
+                    "id": 9965,
+                    "nodeType": "Block",
+                    "src": "303:65:17",
+                    "statements": [
+                      {
+                        "expression": {
+                          "argumentTypes": null,
+                          "id": 9961,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "argumentTypes": null,
+                            "id": 9959,
+                            "name": "denied",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 9941,
+                            "src": "317:6:17",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_bool",
+                              "typeString": "bool"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "argumentTypes": null,
+                            "hexValue": "66616c7365",
+                            "id": 9960,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": true,
+                            "kind": "bool",
+                            "lValueRequested": false,
+                            "nodeType": "Literal",
+                            "src": "326:5:17",
+                            "subdenomination": null,
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_bool",
+                              "typeString": "bool"
+                            },
+                            "value": "false"
+                          },
+                          "src": "317:14:17",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          }
+                        },
+                        "id": 9962,
+                        "nodeType": "ExpressionStatement",
+                        "src": "317:14:17"
+                      },
+                      {
+                        "expression": {
+                          "argumentTypes": null,
+                          "hexValue": "66616c7365",
+                          "id": 9963,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": true,
+                          "kind": "bool",
+                          "lValueRequested": false,
+                          "nodeType": "Literal",
+                          "src": "352:5:17",
+                          "subdenomination": null,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          },
+                          "value": "false"
+                        },
+                        "functionReturnParameters": 9957,
+                        "id": 9964,
+                        "nodeType": "Return",
+                        "src": "345:12:17"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "expression": {
+                    "argumentTypes": null,
+                    "hexValue": "74727565",
+                    "id": 9967,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": true,
+                    "kind": "bool",
+                    "lValueRequested": false,
+                    "nodeType": "Literal",
+                    "src": "384:4:17",
+                    "subdenomination": null,
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bool",
+                      "typeString": "bool"
+                    },
+                    "value": "true"
+                  },
+                  "functionReturnParameters": 9957,
+                  "id": 9968,
+                  "nodeType": "Return",
+                  "src": "377:11:17"
+                }
+              ]
+            },
+            "documentation": null,
+            "id": 9970,
+            "implemented": true,
+            "isConstructor": false,
+            "isDeclaredConst": false,
+            "modifiers": [],
+            "name": "isAllowed",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 9954,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 9951,
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 9970,
+                  "src": "242:7:17",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 9950,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "242:7:17",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 9953,
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 9970,
+                  "src": "251:7:17",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 9952,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "251:7:17",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "241:18:17"
+            },
+            "payable": false,
+            "returnParameters": {
+              "id": 9957,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 9956,
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 9970,
+                  "src": "275:4:17",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bool",
+                    "typeString": "bool"
+                  },
+                  "typeName": {
+                    "id": 9955,
+                    "name": "bool",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "275:4:17",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bool",
+                      "typeString": "bool"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "274:6:17"
+            },
+            "scope": 9971,
+            "src": "223:172:17",
+            "stateMutability": "nonpayable",
+            "superFunction": null,
+            "visibility": "public"
+          }
+        ],
+        "scope": 9972,
+        "src": "118:279:17"
+      }
+    ],
+    "src": "92:306:17"
+  },
+  "legacyAST": {
+    "absolutePath": "/Users/alesanro/Documents/Projects/ChronoBank/LX-SC/contracts/helpers/ManagerMock.sol",
+    "exportedSymbols": {
+      "ManagerMock": [
+        9971
+      ]
+    },
+    "id": 9972,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 9939,
+        "literals": [
+          "solidity",
+          "^",
+          "0.4",
+          ".18"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "92:24:17"
+      },
+      {
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "documentation": null,
+        "fullyImplemented": true,
+        "id": 9971,
+        "linearizedBaseContracts": [
+          9971
+        ],
+        "name": "ManagerMock",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "constant": false,
+            "id": 9941,
+            "name": "denied",
+            "nodeType": "VariableDeclaration",
+            "scope": 9971,
+            "src": "146:11:17",
+            "stateVariable": true,
+            "storageLocation": "default",
+            "typeDescriptions": {
+              "typeIdentifier": "t_bool",
+              "typeString": "bool"
+            },
+            "typeName": {
+              "id": 9940,
+              "name": "bool",
+              "nodeType": "ElementaryTypeName",
+              "src": "146:4:17",
+              "typeDescriptions": {
+                "typeIdentifier": "t_bool",
+                "typeString": "bool"
+              }
+            },
+            "value": null,
+            "visibility": "internal"
+          },
+          {
+            "body": {
+              "id": 9948,
+              "nodeType": "Block",
+              "src": "187:30:17",
+              "statements": [
+                {
+                  "expression": {
+                    "argumentTypes": null,
+                    "id": 9946,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": false,
+                    "lValueRequested": false,
+                    "leftHandSide": {
+                      "argumentTypes": null,
+                      "id": 9944,
+                      "name": "denied",
+                      "nodeType": "Identifier",
+                      "overloadedDeclarations": [],
+                      "referencedDeclaration": 9941,
+                      "src": "197:6:17",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bool",
+                        "typeString": "bool"
+                      }
+                    },
+                    "nodeType": "Assignment",
+                    "operator": "=",
+                    "rightHandSide": {
+                      "argumentTypes": null,
+                      "hexValue": "74727565",
+                      "id": 9945,
+                      "isConstant": false,
+                      "isLValue": false,
+                      "isPure": true,
+                      "kind": "bool",
+                      "lValueRequested": false,
+                      "nodeType": "Literal",
+                      "src": "206:4:17",
+                      "subdenomination": null,
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bool",
+                        "typeString": "bool"
+                      },
+                      "value": "true"
+                    },
+                    "src": "197:13:17",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bool",
+                      "typeString": "bool"
+                    }
+                  },
+                  "id": 9947,
+                  "nodeType": "ExpressionStatement",
+                  "src": "197:13:17"
+                }
+              ]
+            },
+            "documentation": null,
+            "id": 9949,
+            "implemented": true,
+            "isConstructor": false,
+            "isDeclaredConst": false,
+            "modifiers": [],
+            "name": "deny",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 9942,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "177:2:17"
+            },
+            "payable": false,
+            "returnParameters": {
+              "id": 9943,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "187:0:17"
+            },
+            "scope": 9971,
+            "src": "164:53:17",
+            "stateMutability": "nonpayable",
+            "superFunction": null,
+            "visibility": "public"
+          },
+          {
+            "body": {
+              "id": 9969,
+              "nodeType": "Block",
+              "src": "281:114:17",
+              "statements": [
+                {
+                  "condition": {
+                    "argumentTypes": null,
+                    "id": 9958,
+                    "name": "denied",
+                    "nodeType": "Identifier",
+                    "overloadedDeclarations": [],
+                    "referencedDeclaration": 9941,
+                    "src": "295:6:17",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bool",
+                      "typeString": "bool"
+                    }
+                  },
+                  "falseBody": null,
+                  "id": 9966,
+                  "nodeType": "IfStatement",
+                  "src": "291:77:17",
+                  "trueBody": {
+                    "id": 9965,
+                    "nodeType": "Block",
+                    "src": "303:65:17",
+                    "statements": [
+                      {
+                        "expression": {
+                          "argumentTypes": null,
+                          "id": 9961,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "argumentTypes": null,
+                            "id": 9959,
+                            "name": "denied",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 9941,
+                            "src": "317:6:17",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_bool",
+                              "typeString": "bool"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "argumentTypes": null,
+                            "hexValue": "66616c7365",
+                            "id": 9960,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": true,
+                            "kind": "bool",
+                            "lValueRequested": false,
+                            "nodeType": "Literal",
+                            "src": "326:5:17",
+                            "subdenomination": null,
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_bool",
+                              "typeString": "bool"
+                            },
+                            "value": "false"
+                          },
+                          "src": "317:14:17",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          }
+                        },
+                        "id": 9962,
+                        "nodeType": "ExpressionStatement",
+                        "src": "317:14:17"
+                      },
+                      {
+                        "expression": {
+                          "argumentTypes": null,
+                          "hexValue": "66616c7365",
+                          "id": 9963,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": true,
+                          "kind": "bool",
+                          "lValueRequested": false,
+                          "nodeType": "Literal",
+                          "src": "352:5:17",
+                          "subdenomination": null,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          },
+                          "value": "false"
+                        },
+                        "functionReturnParameters": 9957,
+                        "id": 9964,
+                        "nodeType": "Return",
+                        "src": "345:12:17"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "expression": {
+                    "argumentTypes": null,
+                    "hexValue": "74727565",
+                    "id": 9967,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": true,
+                    "kind": "bool",
+                    "lValueRequested": false,
+                    "nodeType": "Literal",
+                    "src": "384:4:17",
+                    "subdenomination": null,
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bool",
+                      "typeString": "bool"
+                    },
+                    "value": "true"
+                  },
+                  "functionReturnParameters": 9957,
+                  "id": 9968,
+                  "nodeType": "Return",
+                  "src": "377:11:17"
+                }
+              ]
+            },
+            "documentation": null,
+            "id": 9970,
+            "implemented": true,
+            "isConstructor": false,
+            "isDeclaredConst": false,
+            "modifiers": [],
+            "name": "isAllowed",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 9954,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 9951,
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 9970,
+                  "src": "242:7:17",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 9950,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "242:7:17",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 9953,
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 9970,
+                  "src": "251:7:17",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes32",
+                    "typeString": "bytes32"
+                  },
+                  "typeName": {
+                    "id": 9952,
+                    "name": "bytes32",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "251:7:17",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes32",
+                      "typeString": "bytes32"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "241:18:17"
+            },
+            "payable": false,
+            "returnParameters": {
+              "id": 9957,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 9956,
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 9970,
+                  "src": "275:4:17",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bool",
+                    "typeString": "bool"
+                  },
+                  "typeName": {
+                    "id": 9955,
+                    "name": "bool",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "275:4:17",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bool",
+                      "typeString": "bool"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "274:6:17"
+            },
+            "scope": 9971,
+            "src": "223:172:17",
+            "stateMutability": "nonpayable",
+            "superFunction": null,
+            "visibility": "public"
+          }
+        ],
+        "scope": 9972,
+        "src": "118:279:17"
+      }
+    ],
+    "src": "92:306:17"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.4.24+commit.e67f0147.Emscripten.clang"
+  },
+  "networks": {
+    "1537194631866": {
+      "events": {},
+      "links": {},
+      "address": "0x517c626d7ba60648e3219547e11559dbc72d49cf",
+      "transactionHash": "0x78b59335f88ec6909734b7ca318a2ad3aee8a3e065c96cd83713b67a1b591c1f"
+    },
+    "1537275460783": {
+      "events": {},
+      "links": {},
+      "address": "0x089ecb0894e0ca6ea1badf815bd18ce0e2e89aaa",
+      "transactionHash": "0xd3fb4daae33c9a2bf1b54a9f83c8bf8c0241dbdeb5b1ae559554d951c6ec103f"
+    }
+  },
+  "schemaVersion": "2.0.1",
+  "updatedAt": "2018-09-18T15:43:45.584Z"
+}

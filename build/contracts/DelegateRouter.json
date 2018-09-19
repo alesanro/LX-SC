@@ -1,0 +1,355 @@
+{
+  "contractName": "DelegateRouter",
+  "abi": [],
+  "bytecode": "0x6080604052348015600f57600080fd5b50603580601d6000396000f3006080604052600080fd00a165627a7a7230582026d143f387a0116a66c0a0d0a8ea6f81a80caa00957e31eab3450437b9515ec20029",
+  "deployedBytecode": "0x6080604052600080fd00a165627a7a7230582026d143f387a0116a66c0a0d0a8ea6f81a80caa00957e31eab3450437b9515ec20029",
+  "sourceMap": "238:816:16:-;;;;8:9:-1;5:2;;;30:1;27;20:12;5:2;238:816:16;;;;;;;",
+  "deployedSourceMap": "238:816:16:-;;;;;",
+  "source": "/**\n * Copyright 2017–2018, LaborX PTY\n * Licensed under the AGPL Version 3 license.\n */\n\npragma solidity ^0.4.21;\n\n\n/// @title Routing contract that is able to provide a way for delegating invocations with dynamic destination address.\ncontract DelegateRouter {\n\n    function _delegateCall(address _to) internal {\n        address _backend = _to;\n\n        assembly {\n            let calldataMemoryOffset := mload(0x40)\n            mstore(0x40, add(calldataMemoryOffset, calldatasize))\n            calldatacopy(calldataMemoryOffset, 0x0, calldatasize)\n            let r := delegatecall(sub(gas, 10000), _backend, calldataMemoryOffset, calldatasize, 0, 0)\n\n            let returndataMemoryOffset := mload(0x40)\n            mstore(0x40, add(returndataMemoryOffset, returndatasize))\n            returndatacopy(returndataMemoryOffset, 0x0, returndatasize)\n\n            switch r\n            case 1 {\n                return(returndataMemoryOffset, returndatasize)\n            }\n            default {\n                revert(0, 0)\n            }\n        }\n    }\n}\n",
+  "sourcePath": "/Users/alesanro/Documents/Projects/ChronoBank/LX-SC/contracts/base/DelegateRouter.sol",
+  "ast": {
+    "absolutePath": "/Users/alesanro/Documents/Projects/ChronoBank/LX-SC/contracts/base/DelegateRouter.sol",
+    "exportedSymbols": {
+      "DelegateRouter": [
+        9937
+      ]
+    },
+    "id": 9938,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 9925,
+        "literals": [
+          "solidity",
+          "^",
+          "0.4",
+          ".21"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "92:24:16"
+      },
+      {
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "documentation": "@title Routing contract that is able to provide a way for delegating invocations with dynamic destination address.",
+        "fullyImplemented": true,
+        "id": 9937,
+        "linearizedBaseContracts": [
+          9937
+        ],
+        "name": "DelegateRouter",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "body": {
+              "id": 9935,
+              "nodeType": "Block",
+              "src": "314:738:16",
+              "statements": [
+                {
+                  "assignments": [
+                    9931
+                  ],
+                  "declarations": [
+                    {
+                      "constant": false,
+                      "id": 9931,
+                      "name": "_backend",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 9936,
+                      "src": "324:16:16",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_address",
+                        "typeString": "address"
+                      },
+                      "typeName": {
+                        "id": 9930,
+                        "name": "address",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "324:7:16",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_address",
+                          "typeString": "address"
+                        }
+                      },
+                      "value": null,
+                      "visibility": "internal"
+                    }
+                  ],
+                  "id": 9933,
+                  "initialValue": {
+                    "argumentTypes": null,
+                    "id": 9932,
+                    "name": "_to",
+                    "nodeType": "Identifier",
+                    "overloadedDeclarations": [],
+                    "referencedDeclaration": 9927,
+                    "src": "343:3:16",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "nodeType": "VariableDeclarationStatement",
+                  "src": "324:22:16"
+                },
+                {
+                  "externalReferences": [
+                    {
+                      "_backend": {
+                        "declaration": 9931,
+                        "isOffset": false,
+                        "isSlot": false,
+                        "src": "603:8:16",
+                        "valueSize": 1
+                      }
+                    }
+                  ],
+                  "id": 9934,
+                  "nodeType": "InlineAssembly",
+                  "operations": "{\n    let calldataMemoryOffset := mload(0x40)\n    mstore(0x40, add(calldataMemoryOffset, calldatasize()))\n    calldatacopy(calldataMemoryOffset, 0x0, calldatasize())\n    let r := delegatecall(sub(gas(), 10000), _backend, calldataMemoryOffset, calldatasize(), 0, 0)\n    let returndataMemoryOffset := mload(0x40)\n    mstore(0x40, add(returndataMemoryOffset, returndatasize()))\n    returndatacopy(returndataMemoryOffset, 0x0, returndatasize())\n    switch r\n    case 1 {\n        return(returndataMemoryOffset, returndatasize())\n    }\n    default {\n        revert(0, 0)\n    }\n}",
+                  "src": "357:695:16"
+                }
+              ]
+            },
+            "documentation": null,
+            "id": 9936,
+            "implemented": true,
+            "isConstructor": false,
+            "isDeclaredConst": false,
+            "modifiers": [],
+            "name": "_delegateCall",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 9928,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 9927,
+                  "name": "_to",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 9936,
+                  "src": "292:11:16",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 9926,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "292:7:16",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "291:13:16"
+            },
+            "payable": false,
+            "returnParameters": {
+              "id": 9929,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "314:0:16"
+            },
+            "scope": 9937,
+            "src": "269:783:16",
+            "stateMutability": "nonpayable",
+            "superFunction": null,
+            "visibility": "internal"
+          }
+        ],
+        "scope": 9938,
+        "src": "238:816:16"
+      }
+    ],
+    "src": "92:963:16"
+  },
+  "legacyAST": {
+    "absolutePath": "/Users/alesanro/Documents/Projects/ChronoBank/LX-SC/contracts/base/DelegateRouter.sol",
+    "exportedSymbols": {
+      "DelegateRouter": [
+        9937
+      ]
+    },
+    "id": 9938,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 9925,
+        "literals": [
+          "solidity",
+          "^",
+          "0.4",
+          ".21"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "92:24:16"
+      },
+      {
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "documentation": "@title Routing contract that is able to provide a way for delegating invocations with dynamic destination address.",
+        "fullyImplemented": true,
+        "id": 9937,
+        "linearizedBaseContracts": [
+          9937
+        ],
+        "name": "DelegateRouter",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "body": {
+              "id": 9935,
+              "nodeType": "Block",
+              "src": "314:738:16",
+              "statements": [
+                {
+                  "assignments": [
+                    9931
+                  ],
+                  "declarations": [
+                    {
+                      "constant": false,
+                      "id": 9931,
+                      "name": "_backend",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 9936,
+                      "src": "324:16:16",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_address",
+                        "typeString": "address"
+                      },
+                      "typeName": {
+                        "id": 9930,
+                        "name": "address",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "324:7:16",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_address",
+                          "typeString": "address"
+                        }
+                      },
+                      "value": null,
+                      "visibility": "internal"
+                    }
+                  ],
+                  "id": 9933,
+                  "initialValue": {
+                    "argumentTypes": null,
+                    "id": 9932,
+                    "name": "_to",
+                    "nodeType": "Identifier",
+                    "overloadedDeclarations": [],
+                    "referencedDeclaration": 9927,
+                    "src": "343:3:16",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "nodeType": "VariableDeclarationStatement",
+                  "src": "324:22:16"
+                },
+                {
+                  "externalReferences": [
+                    {
+                      "_backend": {
+                        "declaration": 9931,
+                        "isOffset": false,
+                        "isSlot": false,
+                        "src": "603:8:16",
+                        "valueSize": 1
+                      }
+                    }
+                  ],
+                  "id": 9934,
+                  "nodeType": "InlineAssembly",
+                  "operations": "{\n    let calldataMemoryOffset := mload(0x40)\n    mstore(0x40, add(calldataMemoryOffset, calldatasize()))\n    calldatacopy(calldataMemoryOffset, 0x0, calldatasize())\n    let r := delegatecall(sub(gas(), 10000), _backend, calldataMemoryOffset, calldatasize(), 0, 0)\n    let returndataMemoryOffset := mload(0x40)\n    mstore(0x40, add(returndataMemoryOffset, returndatasize()))\n    returndatacopy(returndataMemoryOffset, 0x0, returndatasize())\n    switch r\n    case 1 {\n        return(returndataMemoryOffset, returndatasize())\n    }\n    default {\n        revert(0, 0)\n    }\n}",
+                  "src": "357:695:16"
+                }
+              ]
+            },
+            "documentation": null,
+            "id": 9936,
+            "implemented": true,
+            "isConstructor": false,
+            "isDeclaredConst": false,
+            "modifiers": [],
+            "name": "_delegateCall",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 9928,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 9927,
+                  "name": "_to",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 9936,
+                  "src": "292:11:16",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 9926,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "292:7:16",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "291:13:16"
+            },
+            "payable": false,
+            "returnParameters": {
+              "id": 9929,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "314:0:16"
+            },
+            "scope": 9937,
+            "src": "269:783:16",
+            "stateMutability": "nonpayable",
+            "superFunction": null,
+            "visibility": "internal"
+          }
+        ],
+        "scope": 9938,
+        "src": "238:816:16"
+      }
+    ],
+    "src": "92:963:16"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.4.24+commit.e67f0147.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "2.0.1",
+  "updatedAt": "2018-09-18T15:37:37.635Z"
+}

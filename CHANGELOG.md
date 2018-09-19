@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.0.11-alpha.1"></a>
+## 0.0.11-alpha.1 (2018-09-18)
+
+
+### Features
+
+* **jobcontroller:** refactor JobController to reduce deployment size ([2da656a](https://github.com/ChronoBank/LX-SC/commit/2da656a))
+* **jobcontroller:** remove skill check while posting job offer ([a347371](https://github.com/ChronoBank/LX-SC/commit/a347371))
+* **jobcontroller:** update job flow to use accept/reject for TM jobs ([f7a09bc](https://github.com/ChronoBank/LX-SC/commit/f7a09bc))
+
+
+
 <a name="0.0.10"></a>
 ## 0.0.10 (2018-07-20)
 
