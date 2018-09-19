@@ -28,7 +28,7 @@ contract('Integration tests (user stories)', (accounts) => {
         PENDING_START: 2**2, 
         STARTED: 2**3, 
         PENDING_FINISH: 2**4, 
-        FINISHED: 2**5, 
+        FINISHED: 2**6, // DEPRECATED: see WORK_ACCEPTED
         WORK_ACCEPTED: 2**6, 
         WORK_REJECTED: 2**7, 
         FINALIZED: 2**8,
@@ -361,12 +361,12 @@ contract('Integration tests (user stories)', (accounts) => {
             it("shouldn't be able to accept second offer with OK code if no enough value")
 
             it("should be able to accept second offer with OK code", async () => {
-                const payment = await contracts.jobController.calculateLockAmountFor(users.worker2, job.id)
+                const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker2, job.id)
                 assert.equal((await contracts.jobController.acceptOffer.call(job.id, users.worker2, { from: users.client , value: payment})).toNumber(), ErrorsScope.OK)
             })
 
             it("should be able to accept second offer", async () => {
-                const payment = await contracts.jobController.calculateLockAmountFor(users.worker2, job.id)
+                const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker2, job.id)
                 const acceptWorkerTx = await contracts.jobController.acceptOffer(job.id, users.worker2, { from: users.client, value: payment})
                 const acceptJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], acceptWorkerTx, "JobOfferAccepted"))[0]
                 assert.isDefined(acceptJobOfferEvent)
@@ -374,7 +374,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("should THROW when trying to accept other offer", async () => {
                 try {
-                    const payment = await contracts.jobController.calculateLockAmountFor(users.worker, job.id)
+                    const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker, job.id)
                     await contracts.jobController.acceptOffer(job.id, users.worker, { from: users.client })
                     assert.isTrue(false)
                 } catch (e) {
@@ -394,7 +394,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
                 await contracts.jobController.postJobOffer(job.id, 100, 100, 100, { from: users.worker })
 
-                const payment = await contracts.jobController.calculateLockAmountFor(users.worker, job.id)
+                const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker, job.id)
                 await contracts.jobController.acceptOffer(job.id, users.worker, { from: users.client, value: payment})
                 await contracts.jobController.startWork(job.id, { from: users.worker })
                 await contracts.jobController.confirmStartWork(job.id, { from: users.client })
@@ -462,13 +462,13 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("worker without increasing time should receive his payment after finishing work", async () => {
                 await contracts.jobController.postJobOffer(job.id, 100, 100, 100, { from: users.worker })
-                const payment = await contracts.jobController.calculateLockAmountFor(users.worker, job.id)
+                const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker, job.id)
                 await contracts.jobController.acceptOffer(job.id, users.worker, { from: users.client, value: payment})
                 await contracts.jobController.startWork(job.id, { from: users.worker })
                 await contracts.jobController.confirmStartWork(job.id, { from: users.client })
                 await helpers.increaseTime(4*60*60) // 4 hours
                 await contracts.jobController.endWork(job.id, { from: users.worker })
-                await contracts.jobController.confirmEndWork(job.id, { from: users.client })
+                await contracts.jobController.acceptWorkResults(job.id, { from: users.client })
 
                 const workerEthBalance = await helpers.getEthBalance(users.worker)
 
@@ -480,7 +480,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("the other worker should be able to apply for a job", async () => {
                 await contracts.jobController.postJobOffer(otherJob.id, 100, 100, 100, { from: users.worker2 })
-                const payment = await contracts.jobController.calculateLockAmountFor(users.worker2, otherJob.id)
+                const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker2, otherJob.id)
                 await contracts.jobController.acceptOffer(otherJob.id, users.worker2, { from: users.client, value: payment})
                 await contracts.jobController.startWork(otherJob.id, { from: users.worker2 })
                 await contracts.jobController.confirmStartWork(otherJob.id, { from: users.client })
@@ -496,7 +496,7 @@ contract('Integration tests (user stories)', (accounts) => {
             it("should be able to add more time for a job with OK code", async () => {
                 const additionalTime = 150;
                 await contracts.jobController.submitAdditionalTimeRequest(otherJob.id, additionalTime, { from: users.worker2, })
-                const additionalPayment = await contracts.jobController.calculateLock(users.worker2, otherJob.id, additionalTime, 0)
+                const additionalPayment = await contracts.jobsDataProvider.calculateLock(users.worker2, otherJob.id, additionalTime, 0)
                 assert.equal(
                     (await contracts.jobController.acceptAdditionalTimeRequest.call(otherJob.id, additionalTime, { from: users.client, value: additionalPayment, })).toNumber(), 
                     ErrorsScope.OK
@@ -505,7 +505,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("should be able to add more time for a job", async () => {
                 const additionalTime = 150;
-                const additionalPayment = await contracts.jobController.calculateLock(users.worker2, otherJob.id, additionalTime, 0)
+                const additionalPayment = await contracts.jobsDataProvider.calculateLock(users.worker2, otherJob.id, additionalTime, 0)
                 const tx = await contracts.jobController.acceptAdditionalTimeRequest(otherJob.id, additionalTime, { from: users.client, value: additionalPayment, })
                 const timeAddedEvent = (await eventsHelper.findEvent([contracts.jobController,], tx, "TimeRequestAccepted"))[0]
                 assert.isDefined(timeAddedEvent)
@@ -517,7 +517,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("the other worker should be able to finish the job", async () => {
                 await contracts.jobController.endWork(otherJob.id, { from: users.worker2 })
-                await contracts.jobController.confirmEndWork(otherJob.id, { from: users.client })
+                await contracts.jobController.acceptWorkResults(otherJob.id, { from: users.client })
 
                 const jobState = await contracts.jobsDataProvider.getJobState.call(otherJob.id)
                 assert.equal(jobState, JobState.FINISHED)
@@ -553,13 +553,13 @@ contract('Integration tests (user stories)', (accounts) => {
                 skillRatings[job.skills] = 8
 
                 await contracts.jobController.postJobOffer(job.id, 100, 100, 100, { from: users.worker })
-                const payment = await contracts.jobController.calculateLockAmountFor(users.worker, job.id)
+                const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker, job.id)
                 await contracts.jobController.acceptOffer(job.id, users.worker, { from: users.client, value: payment})
                 await contracts.jobController.startWork(job.id, { from: users.worker })
                 await contracts.jobController.confirmStartWork(job.id, { from: users.client })
                 await helpers.increaseTime(2*60*60) // 2 hours
                 await contracts.jobController.endWork(job.id, { from: users.worker })
-                await contracts.jobController.confirmEndWork(job.id, { from: users.client })
+                await contracts.jobController.acceptWorkResults(job.id, { from: users.client })
 
                 await contracts.jobController.releasePayment(job.id, { from: users.default })
             })
@@ -710,7 +710,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await setupWorker(job, users.worker)
 
                 await contracts.jobController.postJobOffer(job.id, 200, 200, 100, { from: users.worker })
-                const payment = await contracts.jobController.calculateLockAmountFor(users.worker, job.id)
+                const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker, job.id)
                 await contracts.jobController.acceptOffer(job.id, users.worker, { from: users.client, value: payment})
             })
 
@@ -754,7 +754,7 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("should have confirmation about finishing work from client", async () => {
-                await contracts.jobController.confirmEndWork(job.id, { from: users.client })
+                await contracts.jobController.acceptWorkResults(job.id, { from: users.client })
 
                 assert.equal((await contracts.jobsDataProvider.getJobState.call(job.id)).toNumber(), JobState.FINISHED)
             })
@@ -894,23 +894,23 @@ contract('Integration tests (user stories)', (accounts) => {
             let expectedLastLockedAmount = ((90 * (60 + 80) + 80) / 10) * 11
 
             it("client should accept worker's offer instead of other worker's offer", async () => {
-                const payment = await contracts.jobController.calculateLockAmountFor(users.worker, job.id)
+                const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker, job.id)
                 const tx = await contracts.jobController.acceptOffer(job.id, users.worker, { from: users.client, value: payment})
                 const jobOfferAccepted = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferAccepted'))[0]
                 assert.isDefined(jobOfferAccepted)
             })
 
             it("jobController should not lock previouly offered amount", async () => {
-                assert.isBelow((await contracts.jobController.calculateLockAmount.call(job.id)).toNumber(), notExpectedPreviousLockedAmount)
+                assert.isBelow((await contracts.jobsDataProvider.calculateLockAmount.call(job.id)).toNumber(), notExpectedPreviousLockedAmount)
             })
 
             it("jobController should lock accepted amount", async () => {
-                assert.equal((await contracts.jobController.calculateLockAmount.call(job.id)).toNumber(), expectedLastLockedAmount)
+                assert.equal((await contracts.jobsDataProvider.calculateLockAmount.call(job.id)).toNumber(), expectedLastLockedAmount)
             })
 
             it("client shouldn't be able to change his mind with job offer", async () => {
                 try {
-                    const payment = await contracts.jobController.calculateLockAmountFor(users.worker2, job.id)
+                    const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker2, job.id)
                     await contracts.jobController.acceptOffer(job.id, users.worker2, { from: users.client, value: payment})
                     assert.isTrue(false)
                 } catch (e) {
@@ -935,7 +935,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], postJobOfferTx, 'JobOfferPosted'))[0]
                 assert.isDefined(postJobOfferEvent)
 
-                const payment = await contracts.jobController.calculateLockAmountFor(users.worker, job.id)
+                const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker, job.id)
                 await contracts.jobController.acceptOffer(job.id, users.worker, { from: users.client, value: payment})
                 await contracts.jobController.startWork(job.id, { from: users.worker })
                 await contracts.jobController.confirmStartWork(job.id, { from: users.client })
@@ -985,7 +985,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("should be able to finish work", async () => {
                 await contracts.jobController.endWork(job.id, { from: users.worker })
-                await contracts.jobController.confirmEndWork(job.id, { from: users.client })
+                await contracts.jobController.acceptWorkResults(job.id, { from: users.client })
 
                 initialWorkerBalance = await helpers.getEthBalance(users.worker)
                 await contracts.jobController.releasePayment(job.id, { from: users.default })
@@ -1002,13 +1002,13 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("other worker should be able to perform his work during the same period but without pauses", async () => {
                 await contracts.jobController.postJobOffer(otherJob.id, 200, 200, 100, { from: users.worker2 })
-                const payment = await contracts.jobController.calculateLockAmountFor(users.worker2, otherJob.id)
+                const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker2, otherJob.id)
                 await contracts.jobController.acceptOffer(otherJob.id, users.worker2, { from: users.client, value:payment})
                 await contracts.jobController.startWork(otherJob.id, { from: users.worker2 })
                 await contracts.jobController.confirmStartWork(otherJob.id, { from: users.client })
                 await helpers.increaseTime(4*(8*60*60)) // 4 working day
                 await contracts.jobController.endWork(otherJob.id, { from: users.worker2 })
-                await contracts.jobController.confirmEndWork(otherJob.id, { from: users.client })
+                await contracts.jobController.acceptWorkResults(otherJob.id, { from: users.client })
 
                 initialWorker2Balance = await helpers.getEthBalance(users.worker2)
 
@@ -1050,7 +1050,7 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("should not be able to leave feedback after accepting job offer with RATING_AND_REPUTATION_CANNOT_SET_RATING code", async () => {
-                const payment = await contracts.jobController.calculateLockAmountFor(users.worker, job.id)
+                const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker, job.id)
                 await contracts.jobController.acceptOffer(job.id, users.worker, { from: users.client, value: payment})
 
                 assert.equal((await contracts.ratingLibrary.setJobRating.call(users.client, expectedJobRating[users.client], job.id, { from: users.worker })).toNumber(), ErrorsScope.RATING_AND_REPUTATION_CANNOT_SET_RATING)
@@ -1079,7 +1079,7 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("should not be able to leave feedback after confirming work end with RATING_AND_REPUTATION_CANNOT_SET_RATING code", async () => {
-                await contracts.jobController.confirmEndWork(job.id, { from: users.client })
+                await contracts.jobController.acceptWorkResults(job.id, { from: users.client })
 
                 assert.equal((await contracts.ratingLibrary.setJobRating.call(users.client, expectedJobRating[users.client], job.id, { from: users.worker })).toNumber(), ErrorsScope.RATING_AND_REPUTATION_CANNOT_SET_RATING)
             })
@@ -1117,7 +1117,8 @@ contract('Integration tests (user stories)', (accounts) => {
             })
         })
 
-        describe("I cannot post a job offer if I does not have enough skills", () => {
+        // TODO: return back when skill check will be enabled
+        describe.skip("I cannot post a job offer if I does not have enough skills", () => {
             let applicableJob
             var notApplicableJob
 

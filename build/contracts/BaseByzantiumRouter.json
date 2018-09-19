@@ -1,0 +1,453 @@
+{
+  "contractName": "BaseByzantiumRouter",
+  "abi": [
+    {
+      "payable": true,
+      "stateMutability": "payable",
+      "type": "fallback"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "sourceMap": "",
+  "deployedSourceMap": "",
+  "source": "/**\n * Copyright 2017–2018, LaborX PTY\n * Licensed under the AGPL Version 3 license.\n */\n\npragma solidity ^0.4.11;\n\n\n/// @title Routing contract that is able to provide a way for delegating invocations with dynamic destination address.\ncontract BaseByzantiumRouter {\n\n    function() \n    payable \n    external \n    {\n        address _implementation = implementation();\n\n        assembly {\n            let calldataMemoryOffset := mload(0x40)\n            mstore(0x40, add(calldataMemoryOffset, calldatasize))\n            calldatacopy(calldataMemoryOffset, 0x0, calldatasize)\n            let r := delegatecall(sub(gas, 10000), _implementation, calldataMemoryOffset, calldatasize, 0, 0)\n\n            let returndataMemoryOffset := mload(0x40)\n            mstore(0x40, add(returndataMemoryOffset, returndatasize))\n            returndatacopy(returndataMemoryOffset, 0x0, returndatasize)\n\n            switch r\n            case 1 {\n                return(returndataMemoryOffset, returndatasize)\n            }\n            default {\n                revert(0, 0)\n            }\n        }\n    }\n\n    /// @notice Returns destination address for future calls\n    /// @dev abstract definition. should be implemented in sibling contracts\n    /// @return destination address\n    function implementation() internal view returns (address);\n}\n",
+  "sourcePath": "solidity-user-lib/contracts/BaseByzantiumRouter.sol",
+  "ast": {
+    "absolutePath": "solidity-user-lib/contracts/BaseByzantiumRouter.sol",
+    "exportedSymbols": {
+      "BaseByzantiumRouter": [
+        21894
+      ]
+    },
+    "id": 21895,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 21878,
+        "literals": [
+          "solidity",
+          "^",
+          "0.4",
+          ".11"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "92:24:37"
+      },
+      {
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "documentation": "@title Routing contract that is able to provide a way for delegating invocations with dynamic destination address.",
+        "fullyImplemented": false,
+        "id": 21894,
+        "linearizedBaseContracts": [
+          21894
+        ],
+        "name": "BaseByzantiumRouter",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "body": {
+              "id": 21887,
+              "nodeType": "Block",
+              "src": "317:765:37",
+              "statements": [
+                {
+                  "assignments": [
+                    21882
+                  ],
+                  "declarations": [
+                    {
+                      "constant": false,
+                      "id": 21882,
+                      "name": "_implementation",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 21888,
+                      "src": "327:23:37",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_address",
+                        "typeString": "address"
+                      },
+                      "typeName": {
+                        "id": 21881,
+                        "name": "address",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "327:7:37",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_address",
+                          "typeString": "address"
+                        }
+                      },
+                      "value": null,
+                      "visibility": "internal"
+                    }
+                  ],
+                  "id": 21885,
+                  "initialValue": {
+                    "argumentTypes": null,
+                    "arguments": [],
+                    "expression": {
+                      "argumentTypes": [],
+                      "id": 21883,
+                      "name": "implementation",
+                      "nodeType": "Identifier",
+                      "overloadedDeclarations": [],
+                      "referencedDeclaration": 21893,
+                      "src": "353:14:37",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_function_internal_view$__$returns$_t_address_$",
+                        "typeString": "function () view returns (address)"
+                      }
+                    },
+                    "id": 21884,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": false,
+                    "kind": "functionCall",
+                    "lValueRequested": false,
+                    "names": [],
+                    "nodeType": "FunctionCall",
+                    "src": "353:16:37",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "nodeType": "VariableDeclarationStatement",
+                  "src": "327:42:37"
+                },
+                {
+                  "externalReferences": [
+                    {
+                      "_implementation": {
+                        "declaration": 21882,
+                        "isOffset": false,
+                        "isSlot": false,
+                        "src": "626:15:37",
+                        "valueSize": 1
+                      }
+                    }
+                  ],
+                  "id": 21886,
+                  "nodeType": "InlineAssembly",
+                  "operations": "{\n    let calldataMemoryOffset := mload(0x40)\n    mstore(0x40, add(calldataMemoryOffset, calldatasize()))\n    calldatacopy(calldataMemoryOffset, 0x0, calldatasize())\n    let r := delegatecall(sub(gas(), 10000), _implementation, calldataMemoryOffset, calldatasize(), 0, 0)\n    let returndataMemoryOffset := mload(0x40)\n    mstore(0x40, add(returndataMemoryOffset, returndatasize()))\n    returndatacopy(returndataMemoryOffset, 0x0, returndatasize())\n    switch r\n    case 1 {\n        return(returndataMemoryOffset, returndatasize())\n    }\n    default {\n        revert(0, 0)\n    }\n}",
+                  "src": "380:702:37"
+                }
+              ]
+            },
+            "documentation": null,
+            "id": 21888,
+            "implemented": true,
+            "isConstructor": false,
+            "isDeclaredConst": false,
+            "modifiers": [],
+            "name": "",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 21879,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "282:2:37"
+            },
+            "payable": true,
+            "returnParameters": {
+              "id": 21880,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "317:0:37"
+            },
+            "scope": 21894,
+            "src": "274:808:37",
+            "stateMutability": "payable",
+            "superFunction": null,
+            "visibility": "external"
+          },
+          {
+            "body": null,
+            "documentation": "@notice Returns destination address for future calls\n @dev abstract definition. should be implemented in sibling contracts\n @return destination address",
+            "id": 21893,
+            "implemented": false,
+            "isConstructor": false,
+            "isDeclaredConst": true,
+            "modifiers": [],
+            "name": "implementation",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 21889,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "1285:2:37"
+            },
+            "payable": false,
+            "returnParameters": {
+              "id": 21892,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 21891,
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 21893,
+                  "src": "1311:7:37",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 21890,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1311:7:37",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1310:9:37"
+            },
+            "scope": 21894,
+            "src": "1262:58:37",
+            "stateMutability": "view",
+            "superFunction": null,
+            "visibility": "internal"
+          }
+        ],
+        "scope": 21895,
+        "src": "238:1084:37"
+      }
+    ],
+    "src": "92:1231:37"
+  },
+  "legacyAST": {
+    "absolutePath": "solidity-user-lib/contracts/BaseByzantiumRouter.sol",
+    "exportedSymbols": {
+      "BaseByzantiumRouter": [
+        21894
+      ]
+    },
+    "id": 21895,
+    "nodeType": "SourceUnit",
+    "nodes": [
+      {
+        "id": 21878,
+        "literals": [
+          "solidity",
+          "^",
+          "0.4",
+          ".11"
+        ],
+        "nodeType": "PragmaDirective",
+        "src": "92:24:37"
+      },
+      {
+        "baseContracts": [],
+        "contractDependencies": [],
+        "contractKind": "contract",
+        "documentation": "@title Routing contract that is able to provide a way for delegating invocations with dynamic destination address.",
+        "fullyImplemented": false,
+        "id": 21894,
+        "linearizedBaseContracts": [
+          21894
+        ],
+        "name": "BaseByzantiumRouter",
+        "nodeType": "ContractDefinition",
+        "nodes": [
+          {
+            "body": {
+              "id": 21887,
+              "nodeType": "Block",
+              "src": "317:765:37",
+              "statements": [
+                {
+                  "assignments": [
+                    21882
+                  ],
+                  "declarations": [
+                    {
+                      "constant": false,
+                      "id": 21882,
+                      "name": "_implementation",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 21888,
+                      "src": "327:23:37",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_address",
+                        "typeString": "address"
+                      },
+                      "typeName": {
+                        "id": 21881,
+                        "name": "address",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "327:7:37",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_address",
+                          "typeString": "address"
+                        }
+                      },
+                      "value": null,
+                      "visibility": "internal"
+                    }
+                  ],
+                  "id": 21885,
+                  "initialValue": {
+                    "argumentTypes": null,
+                    "arguments": [],
+                    "expression": {
+                      "argumentTypes": [],
+                      "id": 21883,
+                      "name": "implementation",
+                      "nodeType": "Identifier",
+                      "overloadedDeclarations": [],
+                      "referencedDeclaration": 21893,
+                      "src": "353:14:37",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_function_internal_view$__$returns$_t_address_$",
+                        "typeString": "function () view returns (address)"
+                      }
+                    },
+                    "id": 21884,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": false,
+                    "kind": "functionCall",
+                    "lValueRequested": false,
+                    "names": [],
+                    "nodeType": "FunctionCall",
+                    "src": "353:16:37",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "nodeType": "VariableDeclarationStatement",
+                  "src": "327:42:37"
+                },
+                {
+                  "externalReferences": [
+                    {
+                      "_implementation": {
+                        "declaration": 21882,
+                        "isOffset": false,
+                        "isSlot": false,
+                        "src": "626:15:37",
+                        "valueSize": 1
+                      }
+                    }
+                  ],
+                  "id": 21886,
+                  "nodeType": "InlineAssembly",
+                  "operations": "{\n    let calldataMemoryOffset := mload(0x40)\n    mstore(0x40, add(calldataMemoryOffset, calldatasize()))\n    calldatacopy(calldataMemoryOffset, 0x0, calldatasize())\n    let r := delegatecall(sub(gas(), 10000), _implementation, calldataMemoryOffset, calldatasize(), 0, 0)\n    let returndataMemoryOffset := mload(0x40)\n    mstore(0x40, add(returndataMemoryOffset, returndatasize()))\n    returndatacopy(returndataMemoryOffset, 0x0, returndatasize())\n    switch r\n    case 1 {\n        return(returndataMemoryOffset, returndatasize())\n    }\n    default {\n        revert(0, 0)\n    }\n}",
+                  "src": "380:702:37"
+                }
+              ]
+            },
+            "documentation": null,
+            "id": 21888,
+            "implemented": true,
+            "isConstructor": false,
+            "isDeclaredConst": false,
+            "modifiers": [],
+            "name": "",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 21879,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "282:2:37"
+            },
+            "payable": true,
+            "returnParameters": {
+              "id": 21880,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "317:0:37"
+            },
+            "scope": 21894,
+            "src": "274:808:37",
+            "stateMutability": "payable",
+            "superFunction": null,
+            "visibility": "external"
+          },
+          {
+            "body": null,
+            "documentation": "@notice Returns destination address for future calls\n @dev abstract definition. should be implemented in sibling contracts\n @return destination address",
+            "id": 21893,
+            "implemented": false,
+            "isConstructor": false,
+            "isDeclaredConst": true,
+            "modifiers": [],
+            "name": "implementation",
+            "nodeType": "FunctionDefinition",
+            "parameters": {
+              "id": 21889,
+              "nodeType": "ParameterList",
+              "parameters": [],
+              "src": "1285:2:37"
+            },
+            "payable": false,
+            "returnParameters": {
+              "id": 21892,
+              "nodeType": "ParameterList",
+              "parameters": [
+                {
+                  "constant": false,
+                  "id": 21891,
+                  "name": "",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 21893,
+                  "src": "1311:7:37",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 21890,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "1311:7:37",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "value": null,
+                  "visibility": "internal"
+                }
+              ],
+              "src": "1310:9:37"
+            },
+            "scope": 21894,
+            "src": "1262:58:37",
+            "stateMutability": "view",
+            "superFunction": null,
+            "visibility": "internal"
+          }
+        ],
+        "scope": 21895,
+        "src": "238:1084:37"
+      }
+    ],
+    "src": "92:1231:37"
+  },
+  "compiler": {
+    "name": "solc",
+    "version": "0.4.24+commit.e67f0147.Emscripten.clang"
+  },
+  "networks": {},
+  "schemaVersion": "2.0.1",
+  "updatedAt": "2018-09-18T15:37:37.850Z"
+}

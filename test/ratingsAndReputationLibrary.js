@@ -60,7 +60,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     PENDING_START: 2**2, 
     STARTED: 2**3, 
     PENDING_FINISH: 2**4, 
-    FINISHED: 2**5, 
+    FINISHED: 2**6, // DEPRECATED: see WORK_ACCEPTED
     WORK_ACCEPTED: 2**6, 
     WORK_REJECTED: 2**7, 
     FINALIZED: 2**8,
@@ -95,7 +95,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       jobId, 100, 100, 100, {from: _worker}
     ))
     .then(async () => {
-      const payment = await jobController.calculateLockAmountFor.call(_worker, jobId)
+      const payment = await jobsDataProvider.calculateLockAmountFor.call(_worker, jobId)
       return await jobController.acceptOffer(jobId, _worker, { from: _client, value: payment, })
     })
     .then(() => ignoreSkillsCheck(false))
@@ -107,7 +107,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(() => jobController.startWork(jobId, {from: _worker}))
     .then(() => jobController.confirmStartWork(jobId, {from: _client}))
     .then(() => jobController.endWork(jobId, {from: _worker}))
-    .then(() => jobController.confirmEndWork(jobId, {from: _client}))
+    .then(() => jobController.acceptWorkResults(jobId, {from: _client}))
     .then(() => jobController.releasePayment(jobId))
     .then(tx => eventsHelper.extractEvents(tx, "PaymentReleased"))
     .then(events => assert.equal(events.length, 1))
@@ -706,7 +706,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
       .then(() => call(...args))
       .then(() => jobController.endWork(jobId, {from: worker}))
       .then(() => call(...args))
-      .then(() => jobController.confirmEndWork(jobId, {from: client}))
+      .then(() => jobController.acceptWorkResults(jobId, {from: client}))
       .then(() => jobsDataProvider.getJobState(jobId))
       .then(asserts.equal(JOB_STATES.FINISHED))  // Ensure all previous stage changes was successful
       .then(() => call(...args))

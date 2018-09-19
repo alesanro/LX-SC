@@ -164,4 +164,59 @@ contract JobDataCore is StorageAdapter, BitOps {
 
         return true;
     }
+
+    function _isFinishedStateForFlow(uint _flow, uint _jobState) internal pure returns (bool) {
+        bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
+        uint _flowType = _flow & ~WORKFLOW_FEATURE_FLAGS;
+        if (_flowType == WORKFLOW_TM) {
+            if (_needsConfirmation && _jobState == JOB_STATE_WORK_ACCEPTED) {
+                return true;
+            }
+            
+            if (!_needsConfirmation &&
+                (_jobState == JOB_STATE_PENDING_FINISH || _jobState == JOB_STATE_WORK_ACCEPTED)
+            ) {
+                return true;
+            }
+        }
+
+        if (_flowType == WORKFLOW_FIXED_PRICE) {
+            if (_jobState == JOB_STATE_WORK_ACCEPTED) {
+                return true;
+            }
+        }
+    }
+
+    function _isStartedStateForFlow(uint _flow, uint _jobState) internal pure returns (bool) {
+        bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
+        if (_needsConfirmation && 
+        _jobState == JOB_STATE_STARTED) {
+            return true;
+        }
+
+        if (!_needsConfirmation &&
+            (_jobState == JOB_STATE_PENDING_START || _jobState == JOB_STATE_STARTED)
+        ) {
+            return true;
+        }
+    }
+
+    function _isActiveStateForFlow(uint _flow, uint _jobState) internal pure returns (bool) {
+        if (_jobState == JOB_STATE_OFFER_ACCEPTED) {
+            return true;
+        }
+        
+        if (_jobState == JOB_STATE_PENDING_START) {
+            return true;
+        }
+
+        if (_jobState == JOB_STATE_STARTED) {
+            return true;
+        }
+
+        bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
+        if (_needsConfirmation && _jobState == JOB_STATE_PENDING_FINISH) {
+            return true;
+        }
+    }
 }
