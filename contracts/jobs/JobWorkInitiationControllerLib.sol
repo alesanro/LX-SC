@@ -20,7 +20,69 @@ contract JobWorkInitiationControllerLib is Roles2LibraryAdapter, JobControllerAb
     {
     }
 
-	/// @notice Creates and posts a new job to a job marketplace
+    function postJobInBoard(
+        uint _flowType,
+        uint _area,
+        uint _category,
+        uint _skills,
+        uint _defaultPay,
+        bytes32 _detailsIPFSHash,
+        uint _boardId
+    )
+    onlyValidBoard(_boardId)
+    onlyValidWorkflow(_flowType)
+    singleOddFlag(_area)
+    singleOddFlag(_category)
+    hasFlags(_skills)
+    public
+    returns (uint)
+    {
+        return _postJobInBoard(
+            _flowType,
+            _area,
+            _category,
+            _skills,
+            _defaultPay,
+            _detailsIPFSHash,
+            _boardId
+        );
+    }
+
+    function _postJobInBoard(
+        uint _flowType,
+        uint _area,
+        uint _category,
+        uint _skills,
+        uint _defaultPay,
+        bytes32 _detailsIPFSHash,
+        uint _boardId
+    )
+    private
+    returns (uint)
+    {
+        uint jobId = store.get(jobsCount) + 1;
+        BoardControllerInterface _boardController = BoardControllerInterface(store.get(boardController));
+        uint result = _boardController.bindJobWithBoard(_boardId, jobId);
+        if (result != OK) {
+            return _emitErrorCode(result);
+        }
+        store.set(bindStatus, jobId, true);
+        store.set(jobsCount, jobId);
+        store.set(jobCreatedAt, jobId, now);
+        store.set(jobState, jobId, JOB_STATE_CREATED);
+        store.set(jobWorkflowType, jobId, _flowType);
+        store.set(jobClient, jobId, msg.sender);
+        store.set(jobSkillsArea, jobId, _area);
+        store.set(jobSkillsCategory, jobId, _category);
+        store.set(jobSkills, jobId, _skills);
+        store.set(jobDefaultPay, jobId, _defaultPay);
+        store.set(jobDetailsIPFSHash, jobId, _detailsIPFSHash);
+        store.add(clientJobs, bytes32(msg.sender), jobId);
+        _emitter().emitJobPosted(jobId, _flowType, msg.sender, _area, _category, _skills, _defaultPay, _detailsIPFSHash, true);
+        return OK;
+    }
+
+    /// @notice Creates and posts a new job to a job marketplace
     /// @param _flowType see WorkflowType
     function postJob(
         uint _flowType,

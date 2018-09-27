@@ -32,7 +32,7 @@ const errorCodes = {
     JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED: errorScope.jobcontroller + 9,
     JOB_CONTROLLER_INCORRECT_TIME_PROVIDED: errorScope.jobcontroller + 10,
     JOB_CONTROLLER_INVALID_WORKER_PAYCHECK_VALUE: errorScope.jobcontroller + 11,
-
+    JOB_CONTROLLER_INVALID_BOARD: errorScope.jobcontroller + 12,
 
     PAYMENT_GATEWAY_INSUFFICIENT_BALANCE: errorScope.paymentgateway + 1,
     PAYMENT_GATEWAY_TRANSFER_FAILED: errorScope.paymentgateway + 2,
