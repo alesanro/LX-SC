@@ -75,6 +75,21 @@ contract JobController is Roles2LibraryAdapter, JobControllerAbstract, DelegateR
         return OK;
     }
 
+    function postJobInBoard(
+        uint _flowType,
+        uint _area,
+        uint _category,
+        uint _skills,
+        uint _defaultPay,
+        bytes32 _detailsIPFSHash,
+        uint _boardId
+    )
+    public
+    returns (uint)
+    {
+        _delegateCall(initiationControllerLib);
+    }
+
     /// @notice Creates and posts a new job to a job marketplace
     /// @param _flowType see WorkflowType
     function postJob(

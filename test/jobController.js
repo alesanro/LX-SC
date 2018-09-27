@@ -26,23 +26,44 @@ contract('JobController', function(accounts) {
   afterEach('revert', reverter.revert);
 
   const asserts = Asserts(assert);
+
   const roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
   const userLibraryInterface = web3.eth.contract(UserLibrary.abi).at('0x0');
+
   let storage;
-  let jobController;
-  let jobsDataProvider;
   let boardController;
+  let jobController;
   let multiEventsHistory;
   let paymentProcessor;
   let userLibrary;
   let paymentGateway;
   let balanceHolder;
+  let roles2Library;
   let mock;
+  let createBoard;
+  let closeBoard;
+  let jobsDataProvider;
 
+  const root = accounts[5];
   const client = accounts[1];
   const worker = accounts[2];
   const client2 = accounts[5];
   const stranger = accounts[9];
+  const moderator = accounts[6];
+
+  const role = 44;
+
+  const boardId = 1;
+  const boardTags = 1;
+  const boardTagsArea = 1;
+  const boardTagsCategory = 1;
+
+  const jobId = 1;
+  const jobArea = 4;
+  const jobCategory = 4;
+  const jobSkills = 4;
+  const jobDefaultPay = 90;
+  const jobDetails = 'Job details';
 
   const defaultWorkerOffer = {
     workerRate: 200000000000,
@@ -245,6 +266,8 @@ contract('JobController', function(accounts) {
     .then(instance => balanceHolder = instance)
     .then(() => UserLibrary.deployed())
     .then(instance => userLibrary = instance)
+    .then(() => Roles2Library.deployed())
+    .then(instance => roles2Library = instance)
     .then(() => PaymentGateway.deployed())
     .then(instance => paymentGateway = instance)
     .then(() => PaymentProcessor.deployed())
@@ -255,13 +278,64 @@ contract('JobController', function(accounts) {
     .then(instance => jobController = instance)
     .then(() => JobsDataProvider.deployed())
     .then(instance => jobsDataProvider = instance)
-    .then(() => paymentGateway.setupEventsHistory(multiEventsHistory.address))
+
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
     .then(() => paymentProcessor.setPaymentGateway(paymentGateway.address))
+    .then(() => paymentGateway.setupEventsHistory(multiEventsHistory.address))
+
     .then(() => jobController.setPaymentProcessor(paymentProcessor.address))
     .then(() => jobController.setUserLibrary(mock.address))
+
     .then(() => jobController.setBoardController(boardController.address))
+
+    .then(() => createBoard = boardController.contract.createBoard.getData(0,0,0,0).slice(0,10))
+    .then(() => closeBoard = boardController.contract.closeBoard.getData(0).slice(0,10))
+
+    .then(() => roles2Library.setRootUser(root, true))
+    .then(() => roles2Library.addRoleCapability(role, boardController.address, createBoard))
+    .then(() => roles2Library.addRoleCapability(role, boardController.address, closeBoard))
+    .then(() => roles2Library.addUserRole(moderator, role, {from: root}))
+
     .then(reverter.snapshot);
+  });
+
+  describe('#postJobInBoard', () => {
+
+    it('should return JOB_CONTROLLER_INVALID_BOARD error code if board is not exists', async () => {
+      const result = await jobController.postJobInBoard.call(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      asserts.equal(result.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_BOARD);
+    });
+
+    it('should return BOARD_CONTROLLER_BOARD_IS_CLOSED error code if board is not active', async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
+      await boardController.closeBoard(boardId, {from: moderator});
+      const result = await jobController.postJobInBoard.call(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      asserts.equal(result.toNumber(), ErrorsNamespace.BOARD_CONTROLLER_BOARD_IS_CLOSED);
+    });
+
+    it('should create job and bind job with board', async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      const jobsCount = await jobsDataProvider.getJobsCount();
+      const jobStatus = await boardController.getJobStatus(boardId, jobId);
+      asserts.equal(jobsCount.toNumber(), 1);
+      asserts.equal(jobStatus, true);
+    });
+
+    it('should emit JobPosted event if job has been posted', async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
+      const result = await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      const jobPostedEvents = await eventsHelper.findEvent([ jobController ], result, 'JobPosted');
+      asserts.equal(jobPostedEvents.length, 1);
+    });
+
+    it('should emit JobBinded event if job has been posted', async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
+      const result = await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      const jobBindedEvents = await eventsHelper.findEvent([ boardController ], result, 'JobBinded');
+      asserts.equal(jobBindedEvents.length, 1);
+    });
+
   });
 
   describe('Contract setup', () => {

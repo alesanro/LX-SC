@@ -15,8 +15,8 @@ const Asserts = require('./helpers/asserts');
 const Reverter = require('./helpers/reverter');
 const eventsHelper = require('./helpers/eventsHelper');
 
+const helpers = require('./helpers/helpers');
 const ErrorsNamespace = require('../common/errors')
-
 
 contract('BoardController', function(accounts) {
   const reverter = new Reverter(web3);
@@ -42,11 +42,14 @@ contract('BoardController', function(accounts) {
   const moderator2 = accounts[7];
   const stranger = accounts[9];
   const client = accounts[1];
+
   const role = 44;
+
   const boardId = 1;
   const boardTags = 1;
   const boardTagsArea = 1;
   const boardTagsCategory = 1;
+
   const jobId = 1;
   const jobArea = 4;
   const jobCategory = 4;
@@ -79,17 +82,49 @@ contract('BoardController', function(accounts) {
 
     .then(() => paymentGateway.setBalanceHolder(balanceHolder.address))
     .then(() => paymentProcessor.setPaymentGateway(paymentGateway.address))
+
     .then(() => jobController.setPaymentProcessor(paymentProcessor.address))
     .then(() => jobController.setUserLibrary(mock.address))
+
     .then(() => createBoard = boardController.contract.createBoard.getData(0,0,0,0).slice(0,10))
     .then(() => closeBoard = boardController.contract.closeBoard.getData(0).slice(0,10))
+
     .then(() => roles2Library.setRootUser(root, true))
     .then(() => roles2Library.addRoleCapability(role, boardController.address, createBoard))
     .then(() => roles2Library.addRoleCapability(role, boardController.address, closeBoard))
     .then(() => roles2Library.addUserRole(moderator, role, {from: root}))
+
     .then(reverter.snapshot);
   });
 
+  describe('#isBoardExists', () => {
+
+    it('should return false if boardId less than 1', async () => {
+      const result = await boardController.isBoardExists(0);
+      asserts.isFalse(result);
+    });
+
+    it('should return false if boardId greater than board count', async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator})
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator})
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator})
+      const result = await boardController.isBoardExists(4);
+      asserts.isFalse(result);
+    });
+
+    it('should return true if boardId exists', async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator})
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator})
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator})
+      const result1 = await boardController.isBoardExists(1);
+      const result2 = await boardController.isBoardExists(2);
+      const result3 = await boardController.isBoardExists(3);
+      asserts.isTrue(result1);
+      asserts.isTrue(result2);
+      asserts.isTrue(result3);
+    });
+
+  });
 
   describe('Board creating', () => {
     it('should allow to create a board by moderator', () => {

@@ -15,6 +15,11 @@ contract UserLibraryInterface {
     function hasSkills(address _user, uint _area, uint _category, uint _skills) public view returns (bool);
 }
 
+contract BoardControllerInterface {
+    function isBoardExists(uint _boardId) public view returns (bool);
+    function bindJobWithBoard(uint _boardId, uint _jobId) public view returns (uint);
+    function getBoardStatus(uint _boardId) public view returns (bool);
+}
 
 contract PaymentProcessorInterface {
     function lockPayment(bytes32 _operationId, address _from) public payable returns (uint);
@@ -159,6 +164,7 @@ contract JobControllerCore {
     uint constant JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED = JOB_CONTROLLER_SCOPE + 9;
     uint constant JOB_CONTROLLER_INCORRECT_TIME_PROVIDED = JOB_CONTROLLER_SCOPE + 10;
     uint constant JOB_CONTROLLER_INVALID_WORKER_PAYCHECK_VALUE = JOB_CONTROLLER_SCOPE + 11;
+    uint constant JOB_CONTROLLER_INVALID_BOARD = JOB_CONTROLLER_SCOPE + 12;
 
     PaymentProcessorInterface public paymentProcessor;
     UserLibraryInterface public userLibrary;
@@ -272,4 +278,17 @@ contract JobControllerAbstract is JobControllerEmitter, JobDataCore, JobControll
         }
         _;
     }
+
+    modifier onlyValidBoard(uint _boardId) {
+        BoardControllerInterface _boardController = BoardControllerInterface(store.get(boardController));
+        if (!_boardController.isBoardExists(_boardId)) {
+            _emitErrorCode(JOB_CONTROLLER_INVALID_BOARD);
+            assembly {
+                mstore(0, 13012) // JOB_CONTROLLER_INVALID_BOARD
+                return(0, 32)
+            }
+        }
+        _;
+    }
+
 }
