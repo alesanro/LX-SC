@@ -152,6 +152,11 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         return _boardId >= 1 && _boardId <= getBoardsCount();
     }
 
+    function getCreatorByJobId(uint _jobId) public view returns (address) {
+        uint boardId = getJobsBoard(_jobId);
+        return store.get(boardCreator, boardId);
+    }
+
     function getJobStatus(uint _boardId, uint _jobId) public view returns (bool) {
         return store.includes(boundJobsInBoard, bytes32(_boardId), _jobId);
     }

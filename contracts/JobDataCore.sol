@@ -24,6 +24,7 @@ contract JobDataCore is StorageAdapter, BitOps {
     uint constant JOB_STATE_WORK_ACCEPTED = 0x040;  // 00001000000
     uint constant JOB_STATE_WORK_REJECTED = 0x080;  // 00010000000
     uint constant JOB_STATE_FINALIZED = 0x100;      // 00100000000
+    uint constant JOB_STATE_DELEGATED = 0x200;      // 01000000000
 
     uint constant OK = 1;
 

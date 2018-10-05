@@ -65,6 +65,13 @@ contract('JobController', function(accounts) {
   const jobDefaultPay = 90;
   const jobDetails = 'Job details';
 
+  const jobDetailsIPFSHash = "0x0011001100ff"
+  const allSkills = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+  const allSkillsCategories = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+  const allSkillsAreas = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+  const allJobStates = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+  const allPausedStates = 2
+
   const defaultWorkerOffer = {
     workerRate: 200000000000,
     workerOnTop: 1000000000,
@@ -87,6 +94,7 @@ contract('JobController', function(accounts) {
     WORK_ACCEPTED: 2**6, 
     WORK_REJECTED: 2**7, 
     FINALIZED: 2**8,
+    DELEGATED: 2**9,
   }
 
   const JOBS_RESULT_OFFSET = 22
@@ -299,6 +307,331 @@ contract('JobController', function(accounts) {
     .then(reverter.snapshot);
   });
 
+  describe('#acceptWorkResults', () => {
+
+    const createPendingFinishJob = async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobOffer(jobId, 1000, 180, 1000, {from: worker});
+      const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
+      await jobController.acceptOffer(jobId, worker, { from: client, value: payment });
+      await jobController.startWork(jobId, {from: worker});
+      await jobController.confirmStartWork(jobId, {from: client});
+      await jobController.pauseWork(jobId, {from: worker});
+      await jobController.resumeWork(jobId, {from: worker});
+      await jobController.endWork(jobId, {from: worker});
+    };
+
+    const createRejectedJob = async () => {
+      await createPendingFinishJob()
+      await jobController.rejectWorkResults(jobId, { from: client });
+    };
+
+    it('should be able to call by client in PENDING_FINISH state', async () => {
+      await createPendingFinishJob();
+      const result = await jobController.acceptWorkResults.call(jobId, { from: client });
+      assert.equal(result.toNumber(), ErrorsNamespace.OK);
+    });
+
+    it('should be able to call by client in WORK_REJECTED state', async () => {
+      await createRejectedJob();
+      const result = await jobController.acceptWorkResults.call(jobId, { from: client });
+      assert.equal(result.toNumber(), ErrorsNamespace.OK);
+    });
+
+    it('should change state to WORK_ACCEPTED', async () => {
+      await createPendingFinishJob();
+      await jobController.acceptWorkResults(jobId, { from: client });
+      const state = await jobsDataProvider.getJobState(jobId);
+      assert.equal(state.toNumber(), JobState.WORK_ACCEPTED);
+    });
+
+    it('should emit WorkAccepted event', async () => {
+      await createPendingFinishJob();
+      const result = await jobController.acceptWorkResults(jobId, { from: client });
+      const events = await eventsHelper.findEvent([ jobController ], result, 'WorkAccepted');
+      assert.equal(events.length, 1);
+    });
+
+  });
+
+  describe('#releasePayment', () => {
+
+    const createWorkAcceptedJob = async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobOffer(jobId, 1000, 180, 1000, {from: worker});
+      const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
+      await jobController.acceptOffer(jobId, worker, { from: client, value: payment });
+      await jobController.startWork(jobId, {from: worker});
+      await jobController.confirmStartWork(jobId, {from: client});
+      await jobController.pauseWork(jobId, {from: worker});
+      await jobController.resumeWork(jobId, {from: worker});
+      await jobController.endWork(jobId, {from: worker});
+      await jobController.acceptWorkResults(jobId, {from: client});
+    };
+
+    it('should return OK', async () => {
+      await createWorkAcceptedJob();
+      const result = await jobController.releasePayment.call(jobId, { from: client });
+      assert.equal(result.toNumber(), ErrorsNamespace.OK);
+    });
+
+    it('should emit PaymentReleased event', async () => {
+      await createWorkAcceptedJob();
+      const result = await jobController.releasePayment(jobId, {from: client});
+      const events = await eventsHelper.findEvent([ jobController ], result, 'PaymentReleased');
+      assert.equal(events.length, 1);
+    });
+
+  });
+
+  describe('#acceptWorkResultsAndReleasePayment', () => {
+
+    const createPendingFinishJob = async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobOffer(jobId, 1000, 180, 1000, {from: worker});
+      const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
+      await jobController.acceptOffer(jobId, worker, { from: client, value: payment });
+      await jobController.startWork(jobId, {from: worker});
+      await jobController.confirmStartWork(jobId, {from: client});
+      await jobController.pauseWork(jobId, {from: worker});
+      await jobController.resumeWork(jobId, {from: worker});
+      await jobController.endWork(jobId, {from: worker});
+    };
+
+    const createRejectedJob = async () => {
+      await createPendingFinishJob()
+      await jobController.rejectWorkResults(jobId, { from: client });
+    };
+
+    it('should be able to call by client in PENDING_FINISH state', async () => {
+      await createPendingFinishJob();
+      const result = await jobController.acceptWorkResultsAndReleasePayment.call(jobId, { from: client });
+      assert.equal(result.toNumber(), ErrorsNamespace.OK);
+    });
+
+    it('should be able to call by client in WORK_REJECTED state', async () => {
+      await createRejectedJob();
+      const result = await jobController.acceptWorkResultsAndReleasePayment.call(jobId, { from: client });
+      assert.equal(result.toNumber(), ErrorsNamespace.OK);
+    });
+
+    it('should change state to FINALIZED', async () => {
+      await createPendingFinishJob();
+      await jobController.acceptWorkResultsAndReleasePayment(jobId, { from: client });
+      const state = await jobsDataProvider.getJobState(jobId);
+      assert.equal(state.toNumber(), JobState.FINALIZED);
+    });
+
+    it('should emit WorkAccepted event', async () => {
+      await createPendingFinishJob();
+      const result = await jobController.acceptWorkResultsAndReleasePayment(jobId, { from: client });
+      const events = await eventsHelper.findEvent([ jobController ], result, 'WorkAccepted');
+      assert.equal(events.length, 1);
+    });
+
+    it('should emit PaymentReleased event', async () => {
+      await createPendingFinishJob();
+      const result = await jobController.acceptWorkResultsAndReleasePayment(jobId, { from: client });
+      const events = await eventsHelper.findEvent([ jobController ], result, 'PaymentReleased');
+      assert.equal(events.length, 1);
+    });
+
+  });
+
+  describe('#delegate', () => {
+
+    const createRejectedJob = async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobOffer(jobId, 1000, 180, 1000, {from: worker});
+      const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
+      await jobController.acceptOffer(jobId, worker, { from: client, value: payment });
+      await jobController.startWork(jobId, {from: worker});
+      await jobController.confirmStartWork(jobId, {from: client});
+      await jobController.pauseWork(jobId, {from: worker});
+      await jobController.resumeWork(jobId, {from: worker});
+      await jobController.endWork(jobId, {from: worker});
+      await jobController.rejectWorkResults(jobId, { from: client });
+    }
+
+    it('should return JOB_CONTROLLER_INVALID_ROLE error code if tx.from != client of job', async () => {
+      await createRejectedJob();
+      const result1 = await jobController.delegate.call(jobId, { from: worker });
+      const result2 = await jobController.delegate.call(jobId, { from: moderator });
+      asserts.equal(result1.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE);
+      asserts.equal(result2.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE);
+    });
+
+    it('should return JOB_CONTROLLER_INVALID_STATE error code if job not in WORK_REJECTED state', async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      const result = await jobController.delegate.call(jobId, { from: client })
+      asserts.equal(result.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE);
+    });
+
+    it('should change job state to DELEGATED if job has been delegated', async () => {
+      await createRejectedJob();
+      await jobController.delegate(jobId, { from: client });
+      const state = await jobsDataProvider.getJobState(jobId);
+      asserts.equal(state.toNumber(), JobState.DELEGATED)
+    });
+
+    it('should emit Delegated event if job has been delegated', async () => {
+      await createRejectedJob();
+      const result = await jobController.delegate(jobId, { from: client });
+      const delegatedEvents = await eventsHelper.findEvent([ jobController ], result, 'Delegated');
+      asserts.equal(delegatedEvents.length, 1);
+    });
+
+  });
+
+  describe('#payDelegated', () => {
+
+    const createDelegatedJob = async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobOffer(jobId, 1000, 180, 1000, {from: worker});
+      const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
+      await jobController.acceptOffer(jobId, worker, { from: client, value: payment });
+      await jobController.startWork(jobId, {from: worker});
+      await jobController.confirmStartWork(jobId, {from: client});
+      await jobController.pauseWork(jobId, {from: worker});
+      await jobController.resumeWork(jobId, {from: worker});
+      await jobController.endWork(jobId, {from: worker});
+      await jobController.rejectWorkResults(jobId, { from: client });
+      await jobController.delegate(jobId, { from: client });
+    };
+
+    it('should return OK if params are valid', async () => {
+      await createDelegatedJob();
+      const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
+      const result = await jobController.payDelegated.call(jobId, payment, 0, { from: moderator });
+      asserts.equal(result.toNumber(), ErrorsNamespace.OK);
+    });
+
+    it('should return JOB_CONTROLLER_INVALID_WORKER_PAYCHECK_VALUE if worker paycheck in invalid', async () => {
+      await createDelegatedJob();
+      const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
+      const result = await jobController.payDelegated.call(jobId, payment + 1, 0, { from: moderator });
+      asserts.equal(result.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_WORKER_PAYCHECK_VALUE);
+    });
+
+    it('should change state to FINALIZED', async () => {
+      await createDelegatedJob();
+      const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
+      await jobController.payDelegated(jobId, payment, 0, { from: moderator });
+      const state = await jobsDataProvider.getJobState(jobId);
+      assert.equal(state.toNumber(), JobState.FINALIZED);
+    });
+
+    it('should emit PaidDelegated event', async () => {
+      await createDelegatedJob();
+      const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
+      const result = await jobController.payDelegated(jobId, payment, 0, { from: moderator });
+      const events = await eventsHelper.findEvent([ jobController ], result, 'PaidDelegated');
+      assert.equal(events.length, 1);
+    });
+
+  });
+
+  describe('#sendForRedoByClient', () => {
+
+    const createRejectedJob = async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobOffer(jobId, 1000, 180, 1000, {from: worker});
+      const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
+      await jobController.acceptOffer(jobId, worker, { from: client, value: payment });
+      await jobController.startWork(jobId, {from: worker});
+      await jobController.confirmStartWork(jobId, {from: client});
+      await jobController.pauseWork(jobId, {from: worker});
+      await jobController.resumeWork(jobId, {from: worker});
+      await jobController.endWork(jobId, {from: worker});
+      await jobController.rejectWorkResults(jobId, { from: client });
+    }
+
+    it('should return JOB_CONTROLLER_INVALID_ROLE error code if tx.from != client of job', async () => {
+      await createRejectedJob();
+      const result1 = await jobController.sendForRedoByClient.call(jobId, { from: worker });
+      const result2 = await jobController.sendForRedoByClient.call(jobId, { from: moderator });
+      asserts.equal(result1.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE);
+      asserts.equal(result2.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE);
+    });
+
+    it('should return JOB_CONTROLLER_INVALID_STATE error code if job not in WORK_REJECTED state', async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      const result = await jobController.sendForRedoByClient.call(jobId, { from: client })
+      asserts.equal(result.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE)
+    });
+
+    it('should change job state to STARTED if job has been sent for redo', async () => {
+      await createRejectedJob();
+      await jobController.sendForRedoByClient(jobId, { from: client });
+      const state = await jobsDataProvider.getJobState(jobId);
+      asserts.equal(state.toNumber(), JobState.STARTED);
+    });
+
+    it('should emit SentForRedo event if job has been sent for redo', async () => {
+      await createRejectedJob();
+      const result = await jobController.sendForRedoByClient(jobId, { from: client });
+      const sentForRedoEvents = await eventsHelper.findEvent([ jobController ], result, 'SentForRedo');
+      asserts.equal(sentForRedoEvents.length, 1);
+    });
+
+  });
+
+  describe('#sendForRedoByBoardOwner', () => {
+
+    const createDelegatedJob = async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobOffer(jobId, 1000, 180, 1000, {from: worker});
+      const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
+      await jobController.acceptOffer(jobId, worker, { from: client, value: payment });
+      await jobController.startWork(jobId, {from: worker});
+      await jobController.confirmStartWork(jobId, {from: client});
+      await jobController.pauseWork(jobId, {from: worker});
+      await jobController.resumeWork(jobId, {from: worker});
+      await jobController.endWork(jobId, {from: worker});
+      await jobController.rejectWorkResults(jobId, { from: client });
+      await jobController.delegate(jobId, { from: client });
+    }
+
+    it('should return JOB_CONTROLLER_ONLY_BOARD_OWNER error code if tx.from != owner of job`s board', async () => {
+      await createDelegatedJob();
+      const result1 = await jobController.sendForRedoByBoardOwner.call(jobId, { from: client });
+      const result2 = await jobController.sendForRedoByBoardOwner.call(jobId, { from: worker });
+      asserts.equal(result1.toNumber(), ErrorsNamespace.JOB_CONTROLLER_ONLY_BOARD_OWNER);
+      asserts.equal(result2.toNumber(), ErrorsNamespace.JOB_CONTROLLER_ONLY_BOARD_OWNER);
+    });
+
+    it('should return JOB_CONTROLLER_INVALID_STATE error code if job not in DELEGATED state', async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      const result = await jobController.sendForRedoByBoardOwner.call(jobId, { from: moderator });
+      asserts.equal(result.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE);
+    });
+
+    it('should change job state to STARTED if job has been sent for redo', async () => {
+      await createDelegatedJob();
+      await jobController.sendForRedoByBoardOwner(jobId, { from: moderator });
+      const state = await jobsDataProvider.getJobState(jobId);
+      asserts.equal(state.toNumber(), JobState.STARTED);
+    });
+
+    it('should emit SentForRedo event if job has been sent for redo', async () => {
+      await createDelegatedJob();
+      const result = await jobController.sendForRedoByBoardOwner(jobId, { from: moderator });
+      const sentForRedoEvents = await eventsHelper.findEvent([ jobController ], result, 'SentForRedo');
+      asserts.equal(sentForRedoEvents.length, 1);
+    });
+
+  });
+
   describe('#postJobInBoard', () => {
 
     it('should return JOB_CONTROLLER_INVALID_BOARD error code if board is not exists', async () => {
@@ -395,7 +728,6 @@ contract('JobController', function(accounts) {
     });
 
   });
-
 
   describe('Job posting', () => {
 
@@ -499,7 +831,6 @@ contract('JobController', function(accounts) {
     });
 
   });
-
 
   describe('Post job offer', () => {
 
@@ -654,7 +985,6 @@ contract('JobController', function(accounts) {
 
   });
 
-
   describe('Accept job offer', () => {
 
     it('should NOT accept job offer for non-existent job worker', () => {
@@ -775,7 +1105,6 @@ contract('JobController', function(accounts) {
     });
 
   });
-
 
   describe('Job status and caller restrictions', () => {
 
@@ -993,7 +1322,6 @@ contract('JobController', function(accounts) {
 
   });
 
-
   describe('Time adjustments', () => {
 
     it("should NOT allow to pause work if it's already paused", () => {
@@ -1040,7 +1368,6 @@ contract('JobController', function(accounts) {
         .then((code) => assert.equal(code, ErrorsNamespace.JOB_CONTROLLER_WORK_IS_NOT_PAUSED))
     });
   });
-
 
   describe('Events', () => {
 
@@ -1376,7 +1703,6 @@ contract('JobController', function(accounts) {
     });
 
   });
-
 
   describe('Reward release', () => {
 

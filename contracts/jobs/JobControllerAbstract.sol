@@ -19,6 +19,7 @@ contract BoardControllerInterface {
     function isBoardExists(uint _boardId) public view returns (bool);
     function bindJobWithBoard(uint _boardId, uint _jobId) public view returns (uint);
     function getBoardStatus(uint _boardId) public view returns (bool);
+    function getCreatorByJobId(uint _jobId) public view returns (address);
 }
 
 contract PaymentProcessorInterface {
@@ -55,6 +56,9 @@ contract JobControllerEmitter is MultiEventsHistoryAdapter {
     event WorkDisputeResolved(address indexed self, uint indexed jobId, uint at);
     event PaymentReleased(address indexed self, uint indexed jobId);
     event JobCanceled(address indexed self, uint indexed jobId);
+    event Delegated(address indexed self, uint indexed jobId, uint at);
+    event SentForRedo(address indexed self, uint indexed jobId, uint at);
+    event PaidDelegated(address indexed self, uint indexed jobId, uint at);
 
     function emitJobPosted(
         uint _jobId,
@@ -137,6 +141,18 @@ contract JobControllerEmitter is MultiEventsHistoryAdapter {
         emit JobCanceled(_self(), _jobId);
     }
 
+    function emitDelegated(uint _jobId, uint at) public {
+        emit Delegated(_self(), _jobId, at);
+    }
+
+    function emitSentForRedo(uint _jobId, uint at) public {
+        emit SentForRedo(_self(), _jobId, at);
+    }
+
+    function emitPaidDelegated(uint _jobId, uint at) public {
+        emit PaidDelegated(_self(), _jobId, at);
+    }
+
     function _emitErrorCode(uint _errorCode) internal returns (uint) {
         if (msg.value > 0) {
             msg.sender.transfer(msg.value);
@@ -165,6 +181,7 @@ contract JobControllerCore {
     uint constant JOB_CONTROLLER_INCORRECT_TIME_PROVIDED = JOB_CONTROLLER_SCOPE + 10;
     uint constant JOB_CONTROLLER_INVALID_WORKER_PAYCHECK_VALUE = JOB_CONTROLLER_SCOPE + 11;
     uint constant JOB_CONTROLLER_INVALID_BOARD = JOB_CONTROLLER_SCOPE + 12;
+    uint constant JOB_CONTROLLER_ONLY_BOARD_OWNER = JOB_CONTROLLER_SCOPE + 13;
 
     PaymentProcessorInterface public paymentProcessor;
     UserLibraryInterface public userLibrary;
@@ -285,6 +302,30 @@ contract JobControllerAbstract is JobControllerEmitter, JobDataCore, JobControll
             _emitErrorCode(JOB_CONTROLLER_INVALID_BOARD);
             assembly {
                 mstore(0, 13012) // JOB_CONTROLLER_INVALID_BOARD
+                return(0, 32)
+            }
+        }
+        _;
+    }
+
+    modifier onlyBoardOwner(uint _jobId) {
+        BoardControllerInterface _boardController = BoardControllerInterface(store.get(boardController));
+        address creator = _boardController.getCreatorByJobId(_jobId);
+        if (creator != msg.sender) {
+            _emitErrorCode(JOB_CONTROLLER_ONLY_BOARD_OWNER);
+            assembly {
+                mstore(0, 13013) // JOB_CONTROLLER_ONLY_BOARD_OWNER
+                return(0, 32)
+            }
+        }
+        _;
+    }
+
+    modifier onlyJobStates(uint _jobId, uint _jobStatesMask) {
+        if (!_hasFlag(_jobStatesMask, store.get(jobState, _jobId))) {
+            _emitErrorCode(JOB_CONTROLLER_INVALID_STATE);
+            assembly {
+                mstore(0, 13003) // JOB_CONTROLLER_INVALID_STATE
                 return(0, 32)
             }
         }

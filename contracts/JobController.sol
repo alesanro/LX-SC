@@ -254,5 +254,52 @@ contract JobController is Roles2LibraryAdapter, JobControllerAbstract, DelegateR
     {
         _delegateCall(acceptanceControllerLib);
     }
+
+
+    function delegate(
+        uint _jobId
+    )
+    public
+    returns (uint _resultCode)
+    {
+        _delegateCall(acceptanceControllerLib);
+    }
+
+    function sendForRedoByClient(
+        uint _jobId
+    )
+    public
+    returns (uint _resultCode)
+    {
+        _delegateCall(acceptanceControllerLib);
+    }
+
+    function sendForRedoByBoardOwner(
+        uint _jobId
+    )
+    public
+    returns (uint _resultCode)
+    {
+        _delegateCall(acceptanceControllerLib);
+    }
+
+    function acceptWorkResultsAndReleasePayment(uint _jobId)
+    external
+    returns (uint)
+    {
+        _delegateCall(acceptanceControllerLib);
+    }
+
+    function payDelegated(
+        uint _jobId,
+        uint _workerPaycheck,
+        uint _penaltyFee
+    )
+    external
+    returns (uint)
+    {
+        _delegateCall(acceptanceControllerLib);
+    }
+
 }
 
