@@ -60,6 +60,9 @@ const helpers = {
   getFlag: index => {
     return web3.toBigNumber(2).pow(index*2);
   },
+  getOddFlag: index => {
+    return web3.toBigNumber(4).pow(index);
+  },
   getEvenFlag: index => {
     return web3.toBigNumber(2).pow(index*2 + 1);
   },

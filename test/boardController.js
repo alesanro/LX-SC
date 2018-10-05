@@ -14,6 +14,7 @@ const Roles2Library = artifacts.require('./Roles2Library.sol');
 const Asserts = require('./helpers/asserts');
 const Reverter = require('./helpers/reverter');
 const eventsHelper = require('./helpers/eventsHelper');
+const constants = require('./helpers/constants');
 
 const helpers = require('./helpers/helpers');
 const ErrorsNamespace = require('../common/errors')
@@ -49,6 +50,7 @@ contract('BoardController', function(accounts) {
   const boardTags = 1;
   const boardTagsArea = 1;
   const boardTagsCategory = 1;
+  const boardIpfsHash = 'boardIpfsHash';
 
   const jobId = 1;
   const jobArea = 4;
@@ -95,6 +97,405 @@ contract('BoardController', function(accounts) {
     .then(() => roles2Library.addUserRole(moderator, role, {from: root}))
 
     .then(reverter.snapshot);
+  });
+
+  describe('#getBoards', () => {
+
+    it('should filter by creator', async () => {
+
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, boardIpfsHash, { from: moderator });
+
+      const result1 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result1.removeZeros().length, 1);
+
+      const result2 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        moderator,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result2.removeZeros().length, 1);
+
+      const result3 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        client,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result3.removeZeros().length, 0);
+
+    });
+
+    it('should filter by status', async () => {
+
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, boardIpfsHash, { from: moderator });
+
+      const result1 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result1.removeZeros().length, 1);
+
+      const result2 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_OPENED_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result2.removeZeros().length, 1);
+
+      const result3 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_CLOSED_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result3.removeZeros().length, 0);
+
+      await boardController.closeBoard(boardId, { from: moderator });
+
+      const result4 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_CLOSED_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result4.removeZeros().length, 1);
+
+    });
+
+    it('should filter by area mask', async () => {
+
+      const result1 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result1.removeZeros().length, 0);
+
+      await boardController.createBoard(helpers.getBitFlag(0), helpers.getOddFlag(0), helpers.getOddFlag(0), boardIpfsHash, { from: moderator });
+      await boardController.createBoard(helpers.getBitFlag(0), helpers.getOddFlag(1), helpers.getOddFlag(0), boardIpfsHash, { from: moderator });
+      await boardController.createBoard(helpers.getBitFlag(0), helpers.getOddFlag(2), helpers.getOddFlag(0), boardIpfsHash, { from: moderator });
+
+      const result2 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result2.removeZeros().length, 3);
+
+      const result3 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        helpers.getOddFlag(0),
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result3.removeZeros().length, 1);
+
+      const result4 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        helpers.getOddFlag(1),
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result4.removeZeros().length, 1);
+
+      const result5 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        helpers.getOddFlag(2),
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result5.removeZeros().length, 1);
+
+      const result6 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        helpers.getOddFlag(0) | helpers.getOddFlag(1),
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result6.removeZeros().length, 2);
+
+      const result7 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        helpers.getOddFlag(0) | helpers.getOddFlag(1) | helpers.getOddFlag(2),
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result7.removeZeros().length, 3);
+
+    });
+
+    it('should filter by category mask', async () => {
+
+      const result1 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result1.removeZeros().length, 0);
+
+      await boardController.createBoard(helpers.getBitFlag(0), helpers.getOddFlag(0), helpers.getOddFlag(0), boardIpfsHash, { from: moderator });
+      await boardController.createBoard(helpers.getBitFlag(0), helpers.getOddFlag(0), helpers.getOddFlag(1), boardIpfsHash, { from: moderator });
+      await boardController.createBoard(helpers.getBitFlag(0), helpers.getOddFlag(0), helpers.getOddFlag(2), boardIpfsHash, { from: moderator });
+
+      const result2 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result2.removeZeros().length, 3);
+
+      const result3 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        helpers.getOddFlag(0),
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result3.removeZeros().length, 1);
+
+      const result4 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        helpers.getOddFlag(1),
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result4.removeZeros().length, 1);
+
+      const result5 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        helpers.getOddFlag(2),
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result5.removeZeros().length, 1);
+
+      const result6 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        helpers.getOddFlag(0) | helpers.getOddFlag(1),
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result6.removeZeros().length, 2);
+
+      const result7 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        helpers.getOddFlag(0) | helpers.getOddFlag(1) | helpers.getOddFlag(2),
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result7.removeZeros().length, 3);
+
+    });
+
+    it('should filter by skills mask', async () => {
+
+      const result1 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result1.removeZeros().length, 0);
+
+      await boardController.createBoard(helpers.getBitFlag(0), helpers.getOddFlag(0), helpers.getOddFlag(0), boardIpfsHash, { from: moderator });
+      await boardController.createBoard(helpers.getBitFlag(1), helpers.getOddFlag(0), helpers.getOddFlag(0), boardIpfsHash, { from: moderator });
+      await boardController.createBoard(helpers.getBitFlag(2), helpers.getOddFlag(0), helpers.getOddFlag(0), boardIpfsHash, { from: moderator });
+
+      const result2 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result2.removeZeros().length, 3);
+
+      const result3 = await boardController.getBoards(
+        helpers.getBitFlag(0),
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result3.removeZeros().length, 1);
+
+      const result4 = await boardController.getBoards(
+        helpers.getBitFlag(1),
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result4.removeZeros().length, 1);
+
+      const result5 = await boardController.getBoards(
+        helpers.getBitFlag(2),
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result5.removeZeros().length, 1);
+
+      const result6 = await boardController.getBoards(
+        helpers.getBitFlag(0) | helpers.getBitFlag(1),
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result6.removeZeros().length, 2);
+
+      const result7 = await boardController.getBoards(
+        helpers.getBitFlag(0) | helpers.getBitFlag(1) | helpers.getBitFlag(2),
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result7.removeZeros().length, 3);
+
+    });
+
+    it('should paginate', async () => {
+
+      await boardController.createBoard(helpers.getBitFlag(0), helpers.getOddFlag(0), helpers.getOddFlag(0), boardIpfsHash, { from: moderator });
+      await boardController.createBoard(helpers.getBitFlag(0), helpers.getOddFlag(0), helpers.getOddFlag(0), boardIpfsHash, { from: moderator });
+      await boardController.createBoard(helpers.getBitFlag(0), helpers.getOddFlag(0), helpers.getOddFlag(0), boardIpfsHash, { from: moderator });
+
+      await boardController.createBoard(helpers.getBitFlag(0), helpers.getOddFlag(0), helpers.getOddFlag(0), boardIpfsHash, { from: moderator });
+      await boardController.createBoard(helpers.getBitFlag(0), helpers.getOddFlag(0), helpers.getOddFlag(0), boardIpfsHash, { from: moderator });
+      await boardController.createBoard(helpers.getBitFlag(0), helpers.getOddFlag(0), helpers.getOddFlag(0), boardIpfsHash, { from: moderator });
+
+      await boardController.createBoard(helpers.getBitFlag(0), helpers.getOddFlag(0), helpers.getOddFlag(0), boardIpfsHash, { from: moderator });
+      await boardController.createBoard(helpers.getBitFlag(0), helpers.getOddFlag(0), helpers.getOddFlag(0), boardIpfsHash, { from: moderator });
+      await boardController.createBoard(helpers.getBitFlag(0), helpers.getOddFlag(0), helpers.getOddFlag(0), boardIpfsHash, { from: moderator });
+
+      const result1 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result1.removeZeros().length, 9);
+
+      const result2 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        constants.FROM_DEFAULT,
+        5,
+      );
+      assert.equal(result2.removeZeros().length, 5);
+
+      const result3 = await boardController.getBoards(
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.TAG_ALL_BIT_MASK,
+        constants.BOARD_CREATOR_ALL_FLAG,
+        constants.BOARD_STATUS_ALL_FLAG,
+        5,
+        constants.TAKE_DEFAULT,
+      );
+      assert.equal(result3.removeZeros().length, 5);
+
+    });
+
   });
 
   describe('#isBoardExists', () => {
@@ -435,56 +836,110 @@ contract('BoardController', function(accounts) {
       it("should return no boards before their creation", async () => {
         assert.equal((await boardController.getBoardsCount.call()).toNumber(), 0)
 
-        const emptyBoardsList = await boardController.getBoards(boardTags, boardTagsArea, boardTagsCategory, 1, 10)
+        const emptyBoardsList = await boardController.getBoards(
+          boardTags,
+          boardTagsArea,
+          boardTagsCategory,
+          constants.BOARD_CREATOR_ALL_FLAG,
+          constants.BOARD_STATUS_ALL_FLAG,
+          constants.FROM_DEFAULT,
+          constants.TAKE_DEFAULT,
+        );
         assert.lengthOf(emptyBoardsList.removeZeros(), 0)
       })
 
       const otherBoardTag = 5;
 
       it("should return created boards only if filter conditions are fulfilled", async () => {
-        await roles2Library.setRootUser(root, true)
-        
-        await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", { from: moderator, })
 
-        assert.lengthOf((await boardController.getBoards.call(boardTags, boardTagsArea, boardTagsCategory, 1, 10)).removeZeros(), 1)
-        assert.lengthOf((await boardController.getBoards.call(0, boardTagsArea, boardTagsCategory, 1, 10)).removeZeros(), 0)
+        await roles2Library.setRootUser(root, true);
+        await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", { from: moderator, });
 
-        await boardController.createBoard(otherBoardTag, boardTagsArea, boardTagsCategory, "boardIpfsHash", { from: moderator, })
+        const result1 = await boardController.getBoards.call(
+          boardTags,
+          boardTagsArea,
+          boardTagsCategory,
+          constants.BOARD_CREATOR_ALL_FLAG,
+          constants.BOARD_STATUS_ALL_FLAG,
+          constants.FROM_DEFAULT,
+          constants.TAKE_DEFAULT,
+        );
+        assert.lengthOf(result1.removeZeros(), 1);
 
-        assert.lengthOf((await boardController.getBoards.call(boardTags, boardTagsArea, boardTagsCategory, 1, 10)).removeZeros(), 2)
+        const result2 = await boardController.getBoards.call(
+          0,
+          boardTagsArea,
+          boardTagsCategory,
+          constants.BOARD_CREATOR_ALL_FLAG,
+          constants.BOARD_STATUS_ALL_FLAG,
+          constants.FROM_DEFAULT,
+          constants.TAKE_DEFAULT,
+        );
+        assert.lengthOf(result2.removeZeros(), 0);
+
+        await boardController.createBoard(otherBoardTag, boardTagsArea, boardTagsCategory, "boardIpfsHash", { from: moderator, });
+
+        const result3 = await boardController.getBoards.call(
+          boardTags,
+          boardTagsArea,
+          boardTagsCategory,
+          constants.BOARD_CREATOR_ALL_FLAG,
+          constants.BOARD_STATUS_ALL_FLAG,
+          constants.FROM_DEFAULT,
+          constants.TAKE_DEFAULT,
+        );
+        assert.lengthOf(result3.removeZeros(), 2);
       
         const filteredBoardTag = 4
-        const otherBoardsList = (await boardController.getBoards.call(filteredBoardTag, boardTagsArea, boardTagsCategory, 1, 10)).removeZeros()        
-        assert.lengthOf(otherBoardsList, 1)
-      })
-    })
+
+        const result4 = await boardController.getBoards.call(
+          filteredBoardTag,
+          boardTagsArea,
+          boardTagsCategory,
+          constants.BOARD_CREATOR_ALL_FLAG,
+          constants.BOARD_STATUS_ALL_FLAG,
+          constants.FROM_DEFAULT,
+          constants.TAKE_DEFAULT,
+        );
+        assert.lengthOf(result4.removeZeros(), 1);
+
+      });
+
+    });
 
     context("get only bound users's boards", () => {
 
       it("should allow to get users's boards", async () => {
         await roles2Library.setRootUser(root, true)
-        
         await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", { from: moderator, })
-        await boardController.bindUserWithBoard(1, moderator)
+        await boardController.bindUserWithBoard(1, moderator);
 
-        assert.lengthOf((await boardController.getBoardsForUser.call(moderator, boardTags, boardTagsArea, boardTagsCategory)).removeZeros(), 1)
-        assert.lengthOf((await boardController.getBoardsForUser.call(root, boardTags, boardTagsArea, boardTagsCategory)).removeZeros(), 0)      
-      })
+        const result1 = await boardController.getBoardsForUser.call(moderator, boardTags, boardTagsArea, boardTagsCategory, constants.BOARD_CREATOR_ALL_FLAG, constants.BOARD_STATUS_ALL_FLAG);
+        assert.lengthOf(result1.removeZeros(), 1);
+
+        const result2 = await boardController.getBoardsForUser.call(root, boardTags, boardTagsArea, boardTagsCategory, constants.BOARD_CREATOR_ALL_FLAG, constants.BOARD_STATUS_ALL_FLAG)
+        assert.lengthOf(result2.removeZeros(), 0);
+
+      });
       
       it("should allow to get boards for different clients", async () => {
-        await roles2Library.setRootUser(root, true)
-        
-        await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", { from: moderator, })
-        await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", { from: moderator, })
+        await roles2Library.setRootUser(root, true);
+        await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", { from: moderator, });
+        await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", { from: moderator, });
 
-        assert.equal((await boardController.getBoardsCount.call()).toNumber(), 2)
+        const result1 = await boardController.getBoardsCount.call();
+        assert.equal(result1.toNumber(), 2);
 
         await boardController.bindUserWithBoard(1, moderator)
         await boardController.bindUserWithBoard(1, client)
-  
-        assert.lengthOf((await boardController.getBoardsForUser.call(moderator, boardTags, boardTagsArea, boardTagsCategory)).removeZeros(), 1)
-        assert.lengthOf((await boardController.getBoardsForUser.call(client, boardTags, boardTagsArea, boardTagsCategory)).removeZeros(), 1)
-      })
+
+        const result2 = await boardController.getBoardsForUser.call(moderator, boardTags, boardTagsArea, boardTagsCategory, constants.BOARD_CREATOR_ALL_FLAG, constants.BOARD_STATUS_ALL_FLAG);
+        assert.lengthOf(result2.removeZeros(), 1);
+
+        const result3 = await boardController.getBoardsForUser.call(client, boardTags, boardTagsArea, boardTagsCategory, constants.BOARD_CREATOR_ALL_FLAG, constants.BOARD_STATUS_ALL_FLAG);
+        assert.lengthOf(result3.removeZeros(), 1);
+
+      });
 
       it("should allow to get board details by id", async () => {
         const otherBoardTags = 7

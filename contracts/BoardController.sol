@@ -201,20 +201,22 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
 
     /// @notice Gets filtered list of boards' ids in paginated way across all created boards
     function getBoards(
-        uint _tags, 
+        uint _tags,
         uint _tagsArea, 
-        uint _tagsCategory, 
+        uint _tagsCategory,
+        address _creator,
+        uint _status,
         uint _fromId, 
         uint _maxLen
-    ) 
-    public 
+    )
+    public
     view 
     returns (uint[] _ids) 
     {
         _ids = new uint[](_maxLen);
         uint _pointer = 0;
-        for (uint _id = _fromId; _id < _fromId + _maxLen; ++_id) {
-            if (_filterBoard(_id, _tags, _tagsArea, _tagsCategory)) {
+        for (uint _id = _fromId; _id < _fromId + _maxLen; _id++) {
+            if (_filterBoard(_id, _tags, _tagsArea, _tagsCategory, _creator, _status)) {
                 _ids[_pointer] = _id;
                 _pointer += 1;
             }
@@ -228,7 +230,9 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         address _user, 
         uint _tags, 
         uint _tagsArea, 
-        uint _tagsCategory
+        uint _tagsCategory,
+        address _creator,
+        uint _status
     )  
     public 
     view 
@@ -239,7 +243,7 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
         uint _pointer = 0;
         for (uint _boardIdx = 0; _boardIdx <= _count; ++_boardIdx) {
             uint _boardId = store.get(userBoards, bytes32(_user), _boardIdx);
-            if (_filterBoard(_boardId, _tags, _tagsArea, _tagsCategory)) {
+            if (_filterBoard(_boardId, _tags, _tagsArea, _tagsCategory, _creator, _status)) {
                 _ids[_pointer] = _boardId;
                 _pointer += 1;
             }
@@ -248,17 +252,27 @@ contract BoardController is StorageAdapter, MultiEventsHistoryAdapter, Roles2Lib
 
     function _filterBoard(
         uint _boardId,
-        uint _tags, 
+        uint _tags,
         uint _tagsArea, 
-        uint _tagsCategory 
+        uint _tagsCategory,
+        address _creator,
+        uint _status
     ) 
     private 
     view 
     returns (bool) 
     {
-        return _hasFlag(store.get(boardTags, _boardId), _tags) &&
+        return (
+            _hasFlag(store.get(boardTags, _boardId), _tags) &&
             _hasFlag(store.get(boardTagsArea, _boardId), _tagsArea) &&
-            _hasFlag(store.get(boardTagsCategory, _boardId), _tagsCategory);   
+            _hasFlag(store.get(boardTagsCategory, _boardId), _tagsCategory) &&
+            (_creator == 0 ? true : store.get(boardCreator, _boardId) == _creator) &&
+            (_status > 1 ? true : _toBool(_status) == store.get(boardStatus, _boardId))
+        );
+    }
+
+    function _toBool(uint _value) private pure returns (bool) {
+        return _value == 1 ? true : false;
     }
     
     function getJobsInBoardCount(uint _boardId) public view returns (uint) {
