@@ -132,8 +132,6 @@ contract JobWorkAcceptanceControllerLib is Roles2LibraryAdapter, JobControllerAb
 
     function acceptWorkResultsAndReleasePayment(uint _jobId)
     public
-    onlyClient(_jobId)
-    onlyJobStates(_jobId, JOB_STATE_PENDING_FINISH | JOB_STATE_WORK_REJECTED)
     returns (uint _resultCode)
     {
         _resultCode = acceptWorkResults(_jobId);
