@@ -31,6 +31,7 @@ Build&TEST:
     - npm install
     - npm run testrpc > /dev/null &
     - sleep 5
+    - npx truffle migrate
     - npx truffle test
     - kill -9 $(ps aux | grep node | awk '{print$2}')
     #- exit 0
@@ -39,4 +40,3 @@ Build&TEST:
     paths:
       - node_modules/
     expire_in: "3 day"
-
