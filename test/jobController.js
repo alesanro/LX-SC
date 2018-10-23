@@ -355,6 +355,38 @@ contract('JobController', function(accounts) {
 
   });
 
+  describe('#jobs statuses', () => {
+
+    const _jobId1 = 1;
+    const _jobId2 = 2;
+
+    it('should pause current working job on start work at another job and on resume work at another job', async () => {
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobOffer(_jobId1, 1000, 180, 1000, {from: worker});
+      const payment1 = await jobsDataProvider.calculateLockAmountFor.call(worker, _jobId1);
+      await jobController.acceptOffer(_jobId1, worker, { from: client, value: payment1 });
+      await jobController.startWork(_jobId1, {from: worker});
+      await jobController.confirmStartWork(_jobId1, {from: client});
+
+      await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobOffer(_jobId2, 1000, 180, 1000, {from: worker});
+      const payment2 = await jobsDataProvider.calculateLockAmountFor.call(worker, _jobId2);
+      await jobController.acceptOffer(_jobId2, worker, { from: client, value: payment2 });
+
+      const resultStart = await jobController.startWork(_jobId2, {from: worker});
+      const eventsStart = await eventsHelper.findEvent([ jobController ], resultStart, 'WorkPaused');
+      assert.equal(eventsStart[0].args.jobId.toString(), _jobId1);
+
+      await jobController.confirmStartWork(_jobId2, {from: client});
+
+      const resultResume = await jobController.resumeWork(_jobId1, {from: worker});
+      const eventsResume = await eventsHelper.findEvent([ jobController ], resultResume, 'WorkPaused');
+      assert.equal(eventsResume[0].args.jobId.toString(), _jobId2);
+    });
+  });
+
   describe('#releasePayment', () => {
 
     const createWorkAcceptedJob = async () => {

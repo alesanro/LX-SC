@@ -28,6 +28,10 @@ contract JobWorkProcessControllerLib is Roles2LibraryAdapter, JobControllerAbstr
     onlyJobState(_jobId, JOB_STATE_OFFER_ACCEPTED)
     returns (uint)
     {
+        uint _startedJobId = jobsDataProvider.getStartedNotPausedJobForWorker(msg.sender);
+        if (_startedJobId != 0 && _startedJobId != _jobId) {
+            _pauseWork(_startedJobId);
+        }
         store.set(jobPendingStartAt, _jobId, now);
         store.set(jobState, _jobId, JOB_STATE_PENDING_START);
 
@@ -57,8 +61,15 @@ contract JobWorkProcessControllerLib is Roles2LibraryAdapter, JobControllerAbstr
     external
     onlyWorker(_jobId)
     onlyStartedState(_jobId)
-    returns (uint)
+    returns (uint _resultCode)
     {
+        _resultCode = _pauseWork(_jobId);
+        if (_resultCode != OK) {
+            return _emitErrorCode(_resultCode);
+        }
+    }
+
+    function _pauseWork(uint _jobId) internal returns (uint) {
         if (store.get(jobPaused, _jobId)) {
             return _emitErrorCode(JOB_CONTROLLER_WORK_IS_ALREADY_PAUSED);
         }
@@ -78,6 +89,10 @@ contract JobWorkProcessControllerLib is Roles2LibraryAdapter, JobControllerAbstr
     onlyStartedState(_jobId)
     returns (uint _resultCode)
     {
+        uint _startedJobId = jobsDataProvider.getStartedNotPausedJobForWorker(msg.sender);
+        if (_startedJobId != 0 && _startedJobId != _jobId) {
+            _pauseWork(_startedJobId);
+        }
         _resultCode = _resumeWork(_jobId);
         if (_resultCode != OK) {
             return _emitErrorCode(_resultCode);

@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "ganache-cli": "6.1.4",
-    "truffle": "4.1.13",
+    "truffle-core": "be1box/truffle-core",
     "babel-polyfill": "^6.26.0",
     "standard-version": "^4.0.0"
   }
