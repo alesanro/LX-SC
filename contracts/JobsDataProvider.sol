@@ -86,18 +86,6 @@ contract JobsDataProvider is JobDataCore {
         }
     }
 
-    /// @notice Gets started and not paused job id for client
-    function getStartedNotPausedJobForClient(address _client) public view returns (uint id) {
-        uint _count = getJobForClientCount(_client);
-        for (uint _idx = 0; _idx < _count; _idx++) {
-            uint _jobId = store.get(clientJobs, bytes32(_client), _idx);
-            if (_hasFlag(store.get(jobState, _jobId), JOB_STATE_STARTED) && !store.get(jobPaused, _jobId)) {
-                id = _jobId;
-                break;
-            }
-        }
-    }
-
     function getJobForWorkerCount(address _worker) public view returns (uint) {
         return store.count(workerJobs, bytes32(_worker));
     }
@@ -136,7 +124,7 @@ contract JobsDataProvider is JobDataCore {
     }
 
     /// @notice Gets started and not paused job id for worker
-    function getStartedNotPausedJobForWorker(address _worker) public view returns (uint id) {
+    function getFirstActiveJobForWorker(address _worker) public view returns (uint id) {
         uint _count = getJobForWorkerCount(_worker);
         for (uint _idx = 0; _idx < _count; _idx++) {
             uint _jobId = store.get(workerJobs, bytes32(_worker), _idx);
