@@ -284,7 +284,7 @@ contract JobsDataProvider is JobDataCore {
     function isActivatedState(uint _jobId, uint _jobState) public view returns (bool) {
         uint _flow = store.get(jobWorkflowType, _jobId);
         bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
-        if (_needsConfirmation && 
+        if (_needsConfirmation &&
         _jobState >= JOB_STATE_STARTED
         ) {
             return true;
@@ -390,8 +390,8 @@ contract JobsDataProvider is JobDataCore {
 
             } else {
                 // Worker has completed the job within just an hour, so we
-                // release money for the minumum 1 working hour + "on top".
-                return 60 * store.get(jobOfferRate, _jobId, worker) +
+                // release full amount of money + "on top".
+                return (maxEstimatedTime - 60) * store.get(jobOfferRate, _jobId, worker) +
                        store.get(jobOfferOntop, _jobId, worker);
             }
         } else if (

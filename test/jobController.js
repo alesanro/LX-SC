@@ -84,15 +84,15 @@ contract('JobController', function(accounts) {
   }
 
   const JobState = {
-    NOT_SET: 0, 
-    CREATED: 2**0, 
-    OFFER_ACCEPTED: 2**1, 
-    PENDING_START: 2**2, 
-    STARTED: 2**3, 
-    PENDING_FINISH: 2**4, 
+    NOT_SET: 0,
+    CREATED: 2**0,
+    OFFER_ACCEPTED: 2**1,
+    PENDING_START: 2**2,
+    STARTED: 2**3,
+    PENDING_FINISH: 2**4,
     FINISHED: 2**6, // DEPRECATED: see WORK_ACCEPTED
-    WORK_ACCEPTED: 2**6, 
-    WORK_REJECTED: 2**7, 
+    WORK_ACCEPTED: 2**6,
+    WORK_REJECTED: 2**7,
     FINALIZED: 2**8,
     DELEGATED: 2**9,
   }
@@ -239,7 +239,7 @@ contract('JobController', function(accounts) {
     await jobController.confirmStartWork(jobId, {from: client})
 
     await timeOps()
-    
+
     var morePayments = 0
     if (beforeEndWorkHook !== undefined) {
       morePayments = await beforeEndWorkHook(jobId)
@@ -1092,7 +1092,7 @@ contract('JobController', function(accounts) {
         jobId, workerOffer.workerRate, workerOffer.jobEstimate, workerOffer.workerOnTop, { from: worker, }
       )
       {
-        const caller = worker 
+        const caller = worker
         const beforeCallerBalance = await helpers.getEthBalance(caller)
         const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
         const tx = await jobController.acceptOffer(jobId, worker, { from: caller, value: payment, })
@@ -1519,7 +1519,7 @@ contract('JobController', function(accounts) {
           assert.equal(events.length, 1);
           assert.equal(events[0].address, multiEventsHistory.address);
           assert.equal(events[0].event, 'TimeRequestSubmitted');
-          
+
           const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), jobId);
@@ -1534,7 +1534,7 @@ contract('JobController', function(accounts) {
           assert.equal(events.length, 1);
           assert.equal(events[0].address, multiEventsHistory.address);
           assert.equal(events[0].event, 'TimeRequestAccepted');
-          
+
           const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), jobId);
@@ -1690,7 +1690,7 @@ contract('JobController', function(accounts) {
           assert.equal(events.length, 1);
           assert.equal(events[0].address, multiEventsHistory.address);
           assert.equal(events[0].event, 'TimeRequestSubmitted');
-          
+
           const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), jobId);
@@ -1704,7 +1704,7 @@ contract('JobController', function(accounts) {
           assert.equal(events.length, 1);
           assert.equal(events[0].address, multiEventsHistory.address);
           assert.equal(events[0].event, 'TimeRequestRejected');
-          
+
           const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), jobId);
@@ -1991,10 +1991,10 @@ contract('JobController', function(accounts) {
       const additionalTime = 95
       const jobPaymentEstimate = workerOffer.workerRate * (timeSpent + 60) + workerOffer.workerOnTop;
 
-      return onReleasePayment({ 
-        timeSpent: timeSpent, 
-        jobPaymentEstimate: jobPaymentEstimate, 
-        offer: workerOffer, 
+      return onReleasePayment({
+        timeSpent: timeSpent,
+        jobPaymentEstimate: jobPaymentEstimate,
+        offer: workerOffer,
         beforeEndWorkHook: async (jobId) => {
           await jobController.submitAdditionalTimeRequest(jobId, additionalTime, { from: worker, })
 
@@ -2011,15 +2011,15 @@ contract('JobController', function(accounts) {
       const timeSpent = workerOffer.jobEstimate;
       const additionalTime = 95
       const jobPaymentEstimate = workerOffer.workerRate * (timeSpent + additionalTime) + workerOffer.workerOnTop;
-      return onReleasePayment({ 
-        timeSpent: timeSpent, 
-        jobPaymentEstimate: jobPaymentEstimate, 
-        offer: workerOffer, 
+      return onReleasePayment({
+        timeSpent: timeSpent,
+        jobPaymentEstimate: jobPaymentEstimate,
+        offer: workerOffer,
         beforeEndWorkHook: async (jobId) => {
           await jobController.submitAdditionalTimeRequest(jobId, additionalTime, { from: worker, })
           const additionalPayment = await jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
           await jobController.acceptAdditionalTimeRequest(jobId, additionalTime, { from: client, value: additionalPayment, })
-          
+
           await helpers.increaseTime(additionalTime * 60)
           await helpers.mine()
 
@@ -2060,10 +2060,10 @@ contract('JobController', function(accounts) {
       return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, });
     });
 
-    it('should release minimum an hour of work on `releasePayment` when worked for less than an hour', () => {
+    it('should release full amount on `releasePayment` when worked for less than an hour', () => {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 17;
-      const jobPaymentEstimate = workerOffer.workerRate * 60 + workerOffer.workerOnTop;
+      const jobPaymentEstimate = workerOffer.workerRate * workerOffer.jobEstimate + workerOffer.workerOnTop;
       return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, });
     });
 
@@ -2073,7 +2073,7 @@ contract('JobController', function(accounts) {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 183;
       const jobPaymentEstimate = workerOffer.workerRate * timeSpent + workerOffer.workerOnTop;
-      return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, });
+      return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, pauses: true });
     });
 
     it('should release correct amount of tokens on `releasePayment` when' +
@@ -2081,7 +2081,7 @@ contract('JobController', function(accounts) {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 183;
       const jobPaymentEstimate = workerOffer.workerRate * timeSpent + workerOffer.workerOnTop;
-      return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, });
+      return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, pauses: true });
     });
 
     it('should release correct amount of tokens on `releasePayment` when' +
@@ -2089,10 +2089,10 @@ contract('JobController', function(accounts) {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 299;
       const jobPaymentEstimate = workerOffer.workerRate * timeSpent + workerOffer.workerOnTop;
-      return onReleasePayment({ 
-        timeSpent: timeSpent, 
-        jobPaymentEstimate: jobPaymentEstimate, 
-        offer: workerOffer, 
+      return onReleasePayment({
+        timeSpent: timeSpent,
+        jobPaymentEstimate: jobPaymentEstimate,
+        offer: workerOffer,
         pauses: true,
       });
     });
@@ -2102,23 +2102,23 @@ contract('JobController', function(accounts) {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 340;
       const jobPaymentEstimate = workerOffer.workerRate * (workerOffer.jobEstimate + 60) + workerOffer.workerOnTop;
-      return onReleasePayment({ 
-        timeSpent: timeSpent, 
-        jobPaymentEstimate: jobPaymentEstimate, 
-        offer: workerOffer, 
+      return onReleasePayment({
+        timeSpent: timeSpent,
+        jobPaymentEstimate: jobPaymentEstimate,
+        offer: workerOffer,
         pauses: true
       });
     });
 
-    it('should release minimum an hour of work on `releasePayment`' +
+    it('should release full amount on `releasePayment`' +
        'when worked for less than an hour, with pauses/resumes', () => {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 17;
-      const jobPaymentEstimate = workerOffer.workerRate * 60 + workerOffer.workerOnTop;
-      return onReleasePayment({ 
-        timeSpent: timeSpent, 
-        jobPaymentEstimate: jobPaymentEstimate, 
-        offer: workerOffer, 
+      const jobPaymentEstimate = workerOffer.workerRate * workerOffer.jobEstimate + workerOffer.workerOnTop;
+      return onReleasePayment({
+        timeSpent: timeSpent,
+        jobPaymentEstimate: jobPaymentEstimate,
+        offer: workerOffer,
         pauses: true
       });
     });
