@@ -46,15 +46,15 @@ contract("JobController workflows", accounts => {
 	}
 
 	const JobState = {
-		NOT_SET: 0, 
-		CREATED: 2**0, 
-		OFFER_ACCEPTED: 2**1, 
-		PENDING_START: 2**2, 
-		STARTED: 2**3, 
-		PENDING_FINISH: 2**4, 
+		NOT_SET: 0,
+		CREATED: 2**0,
+		OFFER_ACCEPTED: 2**1,
+		PENDING_START: 2**2,
+		STARTED: 2**3,
+		PENDING_FINISH: 2**4,
 		FINISHED: 2**6, // DEPRECATED: see WORK_ACCEPTED
-		WORK_ACCEPTED: 2**6, 
-		WORK_REJECTED: 2**7, 
+		WORK_ACCEPTED: 2**6,
+		WORK_REJECTED: 2**7,
 		FINALIZED: 2**8,
 	}
 
@@ -66,7 +66,7 @@ contract("JobController workflows", accounts => {
 
 	const jobDefaultPaySize = 90;
 	const jobDetailsIPFSHash = "hash of job's data"
-  
+
 	const assertInternalBalance = async (address, expectedValue) => {
 		asserts.equal(expectedValue)(await contracts.paymentGateway.getBalance(address))
 	}
@@ -97,29 +97,29 @@ contract("JobController workflows", accounts => {
 			FINISHED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
 			FINALIZED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE
 		};
-	
+
 		for (let stage in results) {
 			stages[stage] = results[stage];
 		}
-	
+
 		const jobId = 1;
 		const jobArea = 4;
 		const jobCategory = 4;
 		const jobSkills = 4;
 		const additionalTime = 60;
-	
+
 		const workerRate = '0x12f2a36ecd555';
 		const workerOnTop = '0x12f2a36ecd555';
 		const jobEstimate = 180;
-	
+
 		return Promise.resolve()
 			// Represents full chain of interactions between client and worker
 			// Provided `operation` will try to execute on each stage, comparing with expected results
-			
+
 			.then(() => contracts.jobController.postJob(Workflow.TM_WITHOUT_CONFIRMATION, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, }))
 			.then(() => operation.call(...args))
 			.then(result => assert.equal(result.toNumber(), stages.CREATED))
-		
+
 			.then(() => contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, }))
 			.then(async () => {
 				const payment = await contracts.jobsDataProvider.calculateLockAmountFor(worker, jobId)
@@ -127,23 +127,23 @@ contract("JobController workflows", accounts => {
 			})
 			.then(() => operation.call(...args))
 			.then(result => assert.equal(result.toNumber(), stages.OFFER_ACCEPTED))
-		
+
 			.then(() => contracts.jobController.startWork(jobId, { from: worker, }))
 			.then(() => operation.call(...args))
 			.then(result => assert.equal(result.toNumber(), stages.PENDING_START))
-		
+
 			// .then(() => contracts.jobController.confirmStartWork(jobId, { from: client, }))
 			// .then(() => operation.call(...args))
 			// .then(result => assert.equal(result.toNumber(), stages.STARTED))
-		
+
 			.then(() => contracts.jobController.endWork(jobId, { from: worker, }))
 			.then(() => operation.call(...args))
 			.then(result => assert.equal(result.toNumber(), stages.PENDING_FINISH))
-		
+
 			// .then(() => contracts.jobController.acceptWorkResults(jobId, { from: client, }))
 			// .then(() => operation.call(...args))
 			// .then(result => assert.equal(result.toNumber(), stages.FINISHED))
-		
+
 			.then(() => contracts.jobController.releasePayment(jobId))
 			.then(() => operation.call(...args))
 			.then(result => assert.equal(result.toNumber(), stages.FINALIZED));
@@ -159,32 +159,32 @@ contract("JobController workflows", accounts => {
 			WORK_REJECTED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
 			FINALIZED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE
 		};
-	
+
 		for (let stage in results) {
 			stages[stage] = results[stage];
 		}
-	
+
 		const jobId = 1;
 		const jobArea = 4;
 		const jobCategory = 4;
 		const jobSkills = 4;
-	
+
 		const workerRate = '0x12f2a36ecd555';
-		
+
 		// Represents full chain of interactions between client and worker
 		// Provided `operation` will try to execute on each stage, comparing with expected results
-		
+
 		await contracts.jobController.postJob(Workflow.FIXED_PRICE, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 		assert.equal((await operation.call(...args)).toNumber(), stages.CREATED)
-	
+
 		await contracts.jobController.postJobOfferWithPrice(jobId, workerRate, { from: worker, })
 		const payment = await contracts.jobsDataProvider.calculateLockAmountFor(worker, jobId)
 		await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 		assert.equal((await operation.call(...args)).toNumber(), stages.OFFER_ACCEPTED)
-	
+
 		await contracts.jobController.startWork(jobId, { from: worker, })
 		assert.equal((await operation.call(...args)).toNumber(), stages.PENDING_START)
-	
+
 		await contracts.jobController.endWork(jobId, { from: worker, })
 		assert.equal((await operation.call(...args)).toNumber(), stages.PENDING_FINISH)
 
@@ -199,7 +199,7 @@ contract("JobController workflows", accounts => {
 			assert.equal((await operation.call(...args)).toNumber(), stages.WORK_REJECTED)
 
 			await contracts.jobController.resolveWorkDispute(jobId, payment, 0)
-			assert.equal((await operation.call(...args)).toNumber(), stages.FINALIZED)	
+			assert.equal((await operation.call(...args)).toNumber(), stages.FINALIZED)
 		}
 	}
 
@@ -207,7 +207,7 @@ contract("JobController workflows", accounts => {
 		const { jobId, workerRate, workerOnTop, jobEstimate, } = params
 		let clientBalanceBefore;
 		let workerBalanceBefore;
-	
+
 		const timeOps = async () => {
 			if (pauses) {
 				await helpers.increaseTime(timeSpent / 2 * 60)
@@ -226,7 +226,7 @@ contract("JobController workflows", accounts => {
 
 		clientBalanceBefore = await contracts.paymentGateway.getBalance(client)
 		workerBalanceBefore = await contracts.paymentGateway.getBalance(worker)
-		
+
 		await contracts.jobController.postJob(Workflow.TM_WITHOUT_CONFIRMATION, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 		await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
 		const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
@@ -234,7 +234,7 @@ contract("JobController workflows", accounts => {
 
 		await assertInternalBalance(client, clientBalanceBefore)
 		await assertInternalBalance(jobId, payment)
-		
+
 		await contracts.jobController.startWork(jobId, { from: worker, })
 		await timeOps()
 		await contracts.jobController.endWork(jobId, { from: worker, })
@@ -259,7 +259,7 @@ contract("JobController workflows", accounts => {
 		const skillsArea = params.skillsArea || '4';
 		const skillsCategory = params.skillsCategory || '4';
 		const skills = params.skills || '555';
-	
+
 		const workerRate = params.workerRate || '0x12f2a36ecd555';
 		const workerOnTop = params.workerOnTop || '0x12f2a36ecd555';
 		const jobEstimate = params.jobEstimate || 180;
@@ -272,7 +272,7 @@ contract("JobController workflows", accounts => {
 				assert.equal(events.length, 1);
 				assert.equal(events[0].address, contracts.multiEventsHistory.address);
 				assert.equal(events[0].event, 'JobPosted');
-				
+
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
@@ -309,7 +309,7 @@ contract("JobController workflows", accounts => {
 		this._testFixedPriceJobOfferPosted = () => {
 			it("should emit 'JobOfferPosted' event on posting a job offer with fixed price", async () => {
 				const tx = await contracts.jobController.postJobOfferWithPrice(jobId, workerRate, { from: worker, })
-				
+
 				const events = eventsHelper.extractEvents(tx, "JobOfferPosted")
 				assert.equal(events.length, 1);
 				assert.equal(events[0].address, contracts.multiEventsHistory.address);
@@ -329,7 +329,7 @@ contract("JobController workflows", accounts => {
 			it("should emit 'JobOfferAccepted' event on accepting an offer", async () => {
 				const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 				const tx = await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
-				
+
 				const events = eventsHelper.extractEvents(tx, "JobOfferAccepted")
 				assert.equal(events.length, 1);
 				assert.equal(events[0].address, contracts.multiEventsHistory.address);
@@ -368,12 +368,12 @@ contract("JobController workflows", accounts => {
 		this._testWorkPaused = () => {
 			it("should emit 'WorkPaused' event on pausing a work", async () => {
 				const tx = await contracts.jobController.pauseWork(jobId, { from: worker, })
-				
+
 				const events = eventsHelper.extractEvents(tx, "WorkPaused")
 				assert.equal(events.length, 1);
 				assert.equal(events[0].address, contracts.multiEventsHistory.address);
 				assert.equal(events[0].event, 'WorkPaused');
-				
+
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
@@ -399,12 +399,12 @@ contract("JobController workflows", accounts => {
 			it("should emit 'TimeRequestSubmitted' event on accepting more time request", async () => {
 				const additionalTime = 60
 				const tx = await contracts.jobController.submitAdditionalTimeRequest(jobId, additionalTime, { from: worker, })
-				
+
 				const events = eventsHelper.extractEvents(tx, "TimeRequestSubmitted")
 				assert.equal(events.length, 1);
 				assert.equal(events[0].address, contracts.multiEventsHistory.address);
 				assert.equal(events[0].event, 'TimeRequestSubmitted');
-				
+
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
@@ -417,12 +417,12 @@ contract("JobController workflows", accounts => {
 				const additionalTime = 60
 				const additionalPayment = await contracts.jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
 				const tx = await contracts.jobController.acceptAdditionalTimeRequest(jobId, additionalTime, { from: client, value: additionalPayment, })
-				
+
 				const events = eventsHelper.extractEvents(tx, "TimeRequestAccepted")
 				assert.equal(events.length, 1);
 				assert.equal(events[0].address, contracts.multiEventsHistory.address);
 				assert.equal(events[0].event, 'TimeRequestAccepted');
-				
+
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
@@ -434,19 +434,19 @@ contract("JobController workflows", accounts => {
 			it("should emit 'TimeRequestRejected' event on accepting more time request", async () => {
 				const additionalTime = 60
 				const tx = await contracts.jobController.rejectAdditionalTimeRequest(jobId, { from: client, })
-				
+
 				const events = eventsHelper.extractEvents(tx, "TimeRequestRejected")
 				assert.equal(events.length, 1);
 				assert.equal(events[0].address, contracts.multiEventsHistory.address);
 				assert.equal(events[0].event, 'TimeRequestRejected');
-				
+
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
 				assert.equal(log.time.toString(), additionalTime.toString());
 			})
 		}
-		
+
 		this._testEndWorking = () => {
 			it("should emit 'EndWorkRequested' event on requesting end of work by a worker", async () => {
 				const tx = await contracts.jobController.endWork(jobId, { from: worker, })
@@ -454,22 +454,22 @@ contract("JobController workflows", accounts => {
 				assert.equal(events.length, 1)
 			})
 		}
-		
+
 		this._testacceptWorkResults = () => {
 			it("should emit 'WorkAccepted' event on confirming work ended by a client", async () => {
 				const tx = await contracts.jobController.acceptWorkResults(jobId, { from: client, })
-				
+
 				const events = eventsHelper.extractEvents(tx, "WorkAccepted")
 				assert.equal(events.length, 1);
 				assert.equal(events[0].address, contracts.multiEventsHistory.address);
 				assert.equal(events[0].event, 'WorkAccepted');
-				
+
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
 			})
 		}
-		
+
 		this._testJobCancelled = () => {
 			it("should emit 'JobCanceled' event on cancelling job", async () => {
 				const tx = await contracts.jobController.cancelJob(jobId, { from: client, })
@@ -544,11 +544,11 @@ contract("JobController workflows", accounts => {
 				assert.equal(log.jobId.toString(), jobId);
 			})
 		}
-	}			
+	}
 
 	before('setup', async () => {
 		contracts.mock = await Mock.deployed()
-		
+
 		contracts.multiEventsHistory = await MultiEventsHistory.deployed()
 		contracts.storage = await Storage.deployed()
 		contracts.balanceHolder = await BalanceHolder.deployed()
@@ -796,7 +796,7 @@ contract("JobController workflows", accounts => {
 				after(async () => await reverter.revert())
 
 				describe("accepting offer", () => {
-					
+
 					it("should NOT allow to accept offer by non-client with JOB_CONTROLLER_INVALID_ROLE code", async () => {
 						const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 						assert.equal(
@@ -804,24 +804,24 @@ contract("JobController workflows", accounts => {
 							ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE
 						)
 					})
-	
+
 					it("should allow to accept offer by a client", async () => {
 						const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 						await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 						assert.equal(await contracts.jobsDataProvider.getJobWorker.call(jobId), worker)
 					})
-	
+
 					it("should allow to cancel a job by a client after an offer was accepted with OK code", async () => {
 						assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: client, })).toNumber(), ErrorsNamespace.OK)
 					})
-	
+
 					it("should NOT allow to cancel a job by non-client after an offer was accepted with JOB_CONTROLLER_INVALID_ROLE code", async () => {
 						assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
 					})
 				})
-				
+
 				describe("start work", () => {
-					
+
 					it("should NOT allow to start a job by non-worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
 						assert.equal((await contracts.jobController.startWork.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
 					})
@@ -830,36 +830,36 @@ contract("JobController workflows", accounts => {
 						await contracts.jobController.startWork(jobId, { from: worker, })
 						assert.equal((await contracts.jobsDataProvider.getJobState(jobId)).toNumber(), JobState.PENDING_START)
 					})
-	
+
 					it("should allow to cancel a job by a client after a job was started with OK code", async () => {
 						assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: client, })).toNumber(), ErrorsNamespace.OK)
 					})
-	
+
 					it("should NOT allow to cancel a job by non-client after a job was started with JOB_CONTROLLER_INVALID_ROLE code", async () => {
 						assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
 					})
-	
+
 					it("should NOT allow to confirm that a job was started by non-client with JOB_CONTROLLER_INVALID_ROLE code", async () => {
 						assert.equal((await contracts.jobController.confirmStartWork.call(jobId, { from: stranger, })), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
 					})
-	
+
 					it("should allow to confirm that a job was started by client with OK code", async () => {
 						assert.equal((await contracts.jobController.confirmStartWork.call(jobId, { from: client, })), ErrorsNamespace.OK)
 					})
-	
+
 					it("should NOT allow to pause work by non-worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
 						assert.equal((await contracts.jobController.pauseWork.call(jobId, { from: stranger, })), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
 					})
-	
+
 					it("should allow to pause work by worker", async () => {
 						const tx = await contracts.jobController.pauseWork(jobId, { from: worker, })
 						assert.equal(eventsHelper.extractEvents(tx, "WorkPaused").length, 1)
 					})
-	
+
 					it("should NOT allow to resume work by non-worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
 						assert.equal((await contracts.jobController.resumeWork.call(jobId, { from: stranger, })), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
 					})
-	
+
 					it("should allow to resume work by a worker", async () => {
 						const tx = await contracts.jobController.resumeWork(jobId, { from: worker, })
 						assert.equal(eventsHelper.extractEvents(tx, "WorkResumed").length, 1)
@@ -874,33 +874,33 @@ contract("JobController workflows", accounts => {
 							ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE.toString(16)
 						)
 					})
-	
+
 					it("should NOT allow to accept time request by a client without submitting it before by a worker with JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED code", async () => {
 						assert.equal(
 							(await contracts.jobController.acceptAdditionalTimeRequest.call(jobId, additionalTime, { from: client, })).toString(16),
 							ErrorsNamespace.JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED.toString(16)
 						)
 					})
-	
+
 					it("should NOT allow to reject time request by a client without submitting it before by a worker with JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED code", async () => {
 						assert.equal(
 							(await contracts.jobController.rejectAdditionalTimeRequest.call(jobId, { from: client, })).toString(16),
 							ErrorsNamespace.JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED.toString(16)
 						)
 					})
-	
+
 					it("should NOT allow to submit additional time request by a stranger with JOB_CONTROLLER_INVALID_ROLE code", async () => {
 						assert.equal(
 							(await contracts.jobController.submitAdditionalTimeRequest.call(jobId, additionalTime, { from: stranger, })).toString(16),
 							ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE.toString(16)
 						)
 					})
-	
+
 					it("should allow to submit additional time request by a worker", async () => {
 						const tx = await contracts.jobController.submitAdditionalTimeRequest(jobId, additionalTime, {  from: worker, })
 						assert.equal(eventsHelper.extractEvents(tx, "TimeRequestSubmitted").length, 1)
 					})
-	
+
 					it("should NOT allow to accept additional time request by a worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
 						const additionalPayment = await contracts.jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
 						assert.equal(
@@ -908,14 +908,14 @@ contract("JobController workflows", accounts => {
 							ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE.toString(16)
 						)
 					})
-	
+
 					it("should NOT allow to reject additional time request by a worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
 						assert.equal(
 							(await contracts.jobController.rejectAdditionalTimeRequest.call(jobId, { from: worker, })).toString(16),
 							ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE.toString(16)
 						)
 					})
-					
+
 					it("should NOT allow to accept additional time request by a client with invalid additional time value with JOB_CONTROLLER_INCORRECT_TIME_PROVIDED code", async () => {
 						const additionalPayment = await contracts.jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
 						assert.equal(
@@ -923,20 +923,20 @@ contract("JobController workflows", accounts => {
 							ErrorsNamespace.JOB_CONTROLLER_INCORRECT_TIME_PROVIDED.toString(16)
 						)
 					})
-					
+
 					it("should THROW and NOT allow to accept additional time request by a client with invalid payment value with JOB_CONTROLLER_INVALID_ROLE code", async () => {
 						const additionalPayment = await contracts.jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
 						await asserts.throws(
 							contracts.jobController.acceptAdditionalTimeRequest.call(jobId, additionalTime, { from: client, value: additionalPayment.sub(1), })
 						)
 					})
-	
+
 					it("should allow to add more time by a client", async () => {
 						const additionalPayment = await contracts.jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
 						const tx = await contracts.jobController.acceptAdditionalTimeRequest(jobId, additionalTime, { from: client, value: additionalPayment, })
 						assert.equal(eventsHelper.extractEvents(tx, "TimeRequestAccepted").length, 1)
 					})
-	
+
 					it("should NOT allow to accept additional time request by a client twice with JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED code", async () => {
 						const additionalPayment = await contracts.jobsDataProvider.calculateLock.call(worker, jobId, additionalTime, 0)
 						assert.equal(
@@ -944,7 +944,7 @@ contract("JobController workflows", accounts => {
 							ErrorsNamespace.JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED.toString(16)
 						)
 					})
-	
+
 					it("should NOT allow to reject additional time request by a client after acceptance with JOB_CONTROLLER_NO_TIME_REQUEST_SUBMITTED code", async () => {
 						assert.equal(
 							(await contracts.jobController.rejectAdditionalTimeRequest.call(jobId, { from: client, })).toString(16),
@@ -954,32 +954,32 @@ contract("JobController workflows", accounts => {
 				})
 
 				describe("end work", () => {
-					
+
 					it("should NOT allow to end work by non-worker with JOB_CONTROLLER_INVALID_ROLE code", async () => {
 						assert.equal((await contracts.jobController.endWork.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
 					})
-	
+
 					it("should allow to end work by a worker", async () => {
 						await contracts.jobController.endWork(jobId, { from: worker, })
 						assert.equal((await contracts.jobsDataProvider.getJobState(jobId)).toNumber(), JobState.PENDING_FINISH)
 					})
-	
+
 					it("should NOT be able to cancel job by non-client when work is done with JOB_CONTROLLER_INVALID_ROLE code", async () => {
 						assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
 					})
-	
+
 					it("should NOT be able to cancel job by a client when work is done with JOB_CONTROLLER_INVALID_STATE code", async () => {
 						assert.equal((await contracts.jobController.cancelJob.call(jobId, { from: client, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE)
 					})
-	
+
 					it("should NOT be able to confirm work was ended by non-client with JOB_CONTROLLER_INVALID_ROLE code", async () => {
 						assert.equal((await contracts.jobController.acceptWorkResults.call(jobId, { from: stranger, })).toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE)
 					})
-	
+
 					it("should be able to confirm work was ended by a client with OK code", async () => {
 						assert.equal((await contracts.jobController.acceptWorkResults.call(jobId, { from: client, })).toNumber(), ErrorsNamespace.OK)
 					})
-	
+
 					it("should be able to release payment after job is done", async () => {
 						await contracts.jobController.releasePayment(jobId)
 						assert.equal((await contracts.jobsDataProvider.getJobState.call(jobId)).toNumber(), JobState.FINALIZED)
@@ -1315,10 +1315,10 @@ contract("JobController workflows", accounts => {
 
 			describe("when cancelling job should use payment processor and", () => {
 				before(async () => {
-					
+
 					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 					await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
-					
+
 					payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
 				})
@@ -1412,9 +1412,9 @@ contract("JobController workflows", accounts => {
 
 						workerBalanceBefore = await helpers.getEthBalance(worker)
 						clientBalanceBefore = await helpers.getEthBalance(client)
-						
+
 						const tx = await contracts.jobController.cancelJob(jobId, {from: client})
-						
+
 						clientBalanceBefore = clientBalanceBefore.sub(await helpers.getTxExpences(tx.tx))
 					})
 
@@ -1440,12 +1440,12 @@ contract("JobController workflows", accounts => {
 					beforeEach(async () => {
 						await contracts.jobController.startWork(jobId, { from: worker, })
 						await contracts.jobController.confirmStartWork(jobId, { from: client, })
-						
+
 						workerBalanceBefore = await helpers.getEthBalance(worker)
 						clientBalanceBefore = await helpers.getEthBalance(client)
-						
+
 						const tx = await contracts.jobController.cancelJob(jobId, {from: client})
-						
+
 						clientBalanceBefore = clientBalanceBefore.sub(await helpers.getTxExpences(tx.tx))
 					})
 
@@ -1495,9 +1495,9 @@ contract("JobController workflows", accounts => {
 					await tm_onReleasePayment(jobParams, timeSpent, jobPaymentEstimate(jobParams.jobEstimate + 60))
 				  });
 
-				  it('should release minimum an hour of work on `releasePayment` when worked for less than an hour', async () => {
+				  it('should release full amount on `releasePayment` when worked for less than an hour', async () => {
 					const timeSpent = 17;
-					await tm_onReleasePayment(jobParams, timeSpent, jobPaymentEstimate(60))
+					await tm_onReleasePayment(jobParams, timeSpent, jobPaymentEstimate(jobParams.jobEstimate))
 				  });
 
 
@@ -1522,13 +1522,13 @@ contract("JobController workflows", accounts => {
 				  it('should release possible maximum of tokens(estimate + 1 hour) ' +
 					 'when worked for more than estimate and an hour, with pauses/resumes', async () => {
 					const timeSpent = 340;
-					await tm_onReleasePayment(jobParams, timeSpent, jobPaymentEstimate(jobParams.jobEstimate + 60))
+					await tm_onReleasePayment(jobParams, timeSpent, jobPaymentEstimate(jobParams.jobEstimate + 60), true)
 				  });
 
-				  it('should release minimum an hour of work on `releasePayment` ' +
+				  it('should release full amount on `releasePayment` ' +
 					 'when worked for less than an hour, with pauses/resumes', async () => {
 					const timeSpent = 17;
-					await tm_onReleasePayment(jobParams, timeSpent, jobPaymentEstimate(60))
+					await tm_onReleasePayment(jobParams, timeSpent, jobPaymentEstimate(jobParams.jobEstimate), true)
 				  });
 			})
 		})

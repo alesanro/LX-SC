@@ -2073,7 +2073,7 @@ contract('JobController', function(accounts) {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 183;
       const jobPaymentEstimate = workerOffer.workerRate * timeSpent + workerOffer.workerOnTop;
-      return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, });
+      return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, pauses: true });
     });
 
     it('should release correct amount of tokens on `releasePayment` when' +
@@ -2081,7 +2081,7 @@ contract('JobController', function(accounts) {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 183;
       const jobPaymentEstimate = workerOffer.workerRate * timeSpent + workerOffer.workerOnTop;
-      return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, });
+      return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, pauses: true });
     });
 
     it('should release correct amount of tokens on `releasePayment` when' +
