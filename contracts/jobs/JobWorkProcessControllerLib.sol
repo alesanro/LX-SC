@@ -28,7 +28,7 @@ contract JobWorkProcessControllerLib is Roles2LibraryAdapter, JobControllerAbstr
     onlyJobState(_jobId, JOB_STATE_OFFER_ACCEPTED)
     returns (uint)
     {
-        uint _startedJobId = jobsDataProvider.getStartedNotPausedJobForWorker(msg.sender);
+        uint _startedJobId = jobsDataProvider.getFirstActiveJobForWorker(msg.sender);
         if (_startedJobId != 0 && _startedJobId != _jobId) {
             _pauseWork(_startedJobId);
         }
@@ -89,7 +89,7 @@ contract JobWorkProcessControllerLib is Roles2LibraryAdapter, JobControllerAbstr
     onlyStartedState(_jobId)
     returns (uint _resultCode)
     {
-        uint _startedJobId = jobsDataProvider.getStartedNotPausedJobForWorker(msg.sender);
+        uint _startedJobId = jobsDataProvider.getFirstActiveJobForWorker(msg.sender);
         if (_startedJobId != 0 && _startedJobId != _jobId) {
             _pauseWork(_startedJobId);
         }
@@ -186,7 +186,7 @@ contract JobWorkProcessControllerLib is Roles2LibraryAdapter, JobControllerAbstr
         );
 
         require(
-            jobsDataProvider.calculateLockAmount(_jobId) - jobPaymentLocked == msg.value, 
+            jobsDataProvider.calculateLockAmount(_jobId) - jobPaymentLocked == msg.value,
             "JOB_CONTROLLER_INVALID_TIME_REQUEST_PAYMENT_VALUE"
         );
 
