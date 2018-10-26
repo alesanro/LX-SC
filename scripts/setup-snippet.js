@@ -121,7 +121,7 @@ JobController.deployed().then(j => j.startWork(6))
 ## Worker 2 (0x003045868e9b5405f710643d1b31dab330b186ec)
 ## User 2 (0x4a7018836d7f6d14cb0e1bf1c7ba36498c495cad)
 
-JobController.deployed().then(j => j.contract.postJobOffer.getData(6, 1200, 10, 20)).then(data => Promise.resolve().then(() => User.at("0x4a7018836d7f6d14cb0e1bf1c7ba36498c495cad").forward(JobController.address, data, 0, true)))
+JobController.deployed().then(j => j.contract.postJobOffer.getData(6, 1200, 20, 20)).then(data => Promise.resolve().then(() => User.at("0x4a7018836d7f6d14cb0e1bf1c7ba36498c495cad").forward(JobController.address, data, 0, true)))
 
 JobsDataProvider.deployed().then(p => p.getJobOffersCount(6)).then(r => r.toString())
 JobsDataProvider.deployed().then(p => p.getJobOffers(10, 0, 100)).then(r => console.log(`${JSON.stringify(r, null, 4)}`))
