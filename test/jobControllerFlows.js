@@ -756,7 +756,7 @@ contract("JobController workflows", accounts => {
 					const jobEstimate = 240;
 
 					const estimatedLockAmount = Math.floor(
-						((workerRate / 60 * (jobEstimate + 60) + workerOnTop) / 10) * 11
+						(((workerRate * (jobEstimate + 60)) / 60 + workerOnTop) / 10) * 11
 					);
 
 					let clientBalanceBefore = await contracts.paymentGateway.getBalance(client)
@@ -1468,7 +1468,7 @@ contract("JobController workflows", accounts => {
 
 			describe('when releasing payment after work is done', () => {
 
-				const jobPaymentEstimate = (timeSpent) => jobParams.workerRate / 60 * timeSpent + jobParams.workerOnTop;
+				const jobPaymentEstimate = (timeSpent) => (jobParams.workerRate * timeSpent) / 60 + jobParams.workerOnTop;
 
 				afterEach(async () => await reverter.revert())
 
@@ -1584,7 +1584,7 @@ contract("JobController workflows", accounts => {
 				const estimate = 68;
 				const ontop = 59;
 				/**
-				 * With these values,  ((rate / 60 * (estimate + 60) + ontop) / 10) * 11  will equal near the uint256 value
+				 * With these values,  (((rate * (estimate + 60)) / 60 + ontop) / 10) * 11  will equal near the uint256 value
 				 */
 				assert.equal(
 					(await contracts.jobController.postJobOffer.call(jobId, rate, estimate, ontop, { from: worker, })).toNumber(),

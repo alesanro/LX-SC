@@ -316,7 +316,7 @@ contract JobsDataProvider is JobDataCore {
     function calculateLock(address worker, uint _jobId, uint _time, uint _onTop) public view returns (uint) {
         // Lock additional working hour + 10% of resulting amount
         uint rate = store.get(jobOfferRate, _jobId, worker);
-        return ((rate / 60 * _time + _onTop) * 11) / 10;
+        return (((rate * _time) / 60 + _onTop) * 11) / 10;
     }
 
     function calculateLockAmount(uint _jobId) public view returns (uint) {
@@ -365,7 +365,7 @@ contract JobsDataProvider is JobDataCore {
                 // Worker was doing the job for more than an hour, but less then
                 // maximum estimated working time. Release money for the time
                 // he has actually worked + "on top" expenses.
-                return timeSpent * store.get(jobOfferRate, _jobId, worker) / 60 +
+                return (timeSpent * store.get(jobOfferRate, _jobId, worker)) / 60 +
                        store.get(jobOfferOntop, _jobId, worker);
 
             } else if (timeSpent > maxEstimatedTime) {
@@ -373,13 +373,13 @@ contract JobsDataProvider is JobDataCore {
                 // requested more time, which is his personal responsibility, since
                 // we're already giving workers additional working hour from start.
                 // So we release money for maximum estimated working time + "on top".
-                return maxEstimatedTime * store.get(jobOfferRate, _jobId, worker) / 60 +
+                return (maxEstimatedTime * store.get(jobOfferRate, _jobId, worker)) / 60 +
                        store.get(jobOfferOntop, _jobId, worker);
 
             } else {
                 // Worker has completed the job within just an hour, so we
                 // release full amount of money + "on top".
-                return (maxEstimatedTime - 60) * store.get(jobOfferRate, _jobId, worker) / 60 +
+                return ((maxEstimatedTime - 60) * store.get(jobOfferRate, _jobId, worker)) / 60 +
                        store.get(jobOfferOntop, _jobId, worker);
             }
         } else if (

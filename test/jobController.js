@@ -1112,7 +1112,7 @@ contract('JobController', function(accounts) {
       let workerBalanceBefore;
 
       const estimatedLockAmount = Math.floor(
-        ((workerRate / 60 * (jobEstimate + 60) + workerOnTop) / 10) * 11
+        (((workerRate * (jobEstimate + 60)) / 60 + workerOnTop) / 10) * 11
       );
 
       return Promise.resolve()
@@ -1989,7 +1989,7 @@ contract('JobController', function(accounts) {
       const workerOffer = defaultWorkerOffer
       const timeSpent = workerOffer.jobEstimate;
       const additionalTime = 60
-      const jobPaymentEstimate = workerOffer.workerRate / 60 * (timeSpent + 60) + workerOffer.workerOnTop;
+      const jobPaymentEstimate = (workerOffer.workerRate * (timeSpent + 60)) / 60 + workerOffer.workerOnTop;
 
       return onReleasePayment({
         timeSpent: timeSpent,
@@ -2010,7 +2010,7 @@ contract('JobController', function(accounts) {
       const workerOffer = defaultWorkerOffer
       const timeSpent = workerOffer.jobEstimate
       const additionalTime = 60
-      const jobPaymentEstimate = workerOffer.workerRate / 60 * (timeSpent + additionalTime) + workerOffer.workerOnTop;
+      const jobPaymentEstimate = (workerOffer.workerRate * (timeSpent + additionalTime)) / 60 + workerOffer.workerOnTop;
       return onReleasePayment({
         timeSpent: timeSpent,
         jobPaymentEstimate: jobPaymentEstimate,
@@ -2032,7 +2032,7 @@ contract('JobController', function(accounts) {
     it('should release correct amount of tokens on `releasePayment` when worked for exactly the estimated time', () => {
       const workerOffer = defaultWorkerOffer
       const timeSpent = workerOffer.jobEstimate;
-      const jobPaymentEstimate = workerOffer.workerRate / 60 * timeSpent + workerOffer.workerOnTop;
+      const jobPaymentEstimate = (workerOffer.workerRate * timeSpent) / 60 + workerOffer.workerOnTop;
       return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, });
     });
 
@@ -2040,7 +2040,7 @@ contract('JobController', function(accounts) {
        'worked for more than an hour but less than estimated time', () => {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 183;
-      const jobPaymentEstimate = workerOffer.workerRate / 60 * timeSpent + workerOffer.workerOnTop;
+      const jobPaymentEstimate = (workerOffer.workerRate * timeSpent) / 60 + workerOffer.workerOnTop;
       return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, });
     });
 
@@ -2048,7 +2048,7 @@ contract('JobController', function(accounts) {
        'worked for more than estimated time but less than estimated time and an hour', () => {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 299;
-      const jobPaymentEstimate = workerOffer.workerRate / 60 * timeSpent + workerOffer.workerOnTop;
+      const jobPaymentEstimate = (workerOffer.workerRate * timeSpent) / 60 + workerOffer.workerOnTop;
       return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, });
     });
 
@@ -2056,14 +2056,14 @@ contract('JobController', function(accounts) {
        'when worked for more than estimate and an hour', () => {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 360;
-      const jobPaymentEstimate = (workerOffer.jobEstimate + 60) * workerOffer.workerRate / 60 + workerOffer.workerOnTop;
+      const jobPaymentEstimate = ((workerOffer.jobEstimate + 60) * workerOffer.workerRate) / 60 + workerOffer.workerOnTop;
       return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, });
     });
 
     it('should release full amount on `releasePayment` when worked for less than an hour', () => {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 17;
-      const jobPaymentEstimate = workerOffer.workerRate / 60 * workerOffer.jobEstimate + workerOffer.workerOnTop;
+      const jobPaymentEstimate = (workerOffer.workerRate * workerOffer.jobEstimate) / 60 + workerOffer.workerOnTop;
       return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, });
     });
 
@@ -2072,7 +2072,7 @@ contract('JobController', function(accounts) {
        'when worked for exactly the estimated time, with pauses/resumes', () => {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 183;
-      const jobPaymentEstimate = workerOffer.workerRate / 60 * timeSpent + workerOffer.workerOnTop;
+      const jobPaymentEstimate = (workerOffer.workerRate * timeSpent) / 60 + workerOffer.workerOnTop;
       return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, pauses: true });
     });
 
@@ -2080,7 +2080,7 @@ contract('JobController', function(accounts) {
        'worked for more than an hour but less than estimated time, with pauses/resumes', () => {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 183;
-      const jobPaymentEstimate = workerOffer.workerRate / 60 * timeSpent + workerOffer.workerOnTop;
+      const jobPaymentEstimate = (workerOffer.workerRate * timeSpent) / 60 + workerOffer.workerOnTop;
       return onReleasePayment({ timeSpent: timeSpent, jobPaymentEstimate: jobPaymentEstimate, offer: workerOffer, pauses: true });
     });
 
@@ -2088,7 +2088,7 @@ contract('JobController', function(accounts) {
        'worked for more than estimated time but less than estimated time and an hour, with pauses/resumes', () => {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 299;
-      const jobPaymentEstimate = workerOffer.workerRate / 60 * timeSpent + workerOffer.workerOnTop;
+      const jobPaymentEstimate = (workerOffer.workerRate * timeSpent) / 60 + workerOffer.workerOnTop;
       return onReleasePayment({
         timeSpent: timeSpent,
         jobPaymentEstimate: jobPaymentEstimate,
@@ -2101,7 +2101,7 @@ contract('JobController', function(accounts) {
        'when worked for more than estimate and an hour, with pauses/resumes', () => {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 360;
-      const jobPaymentEstimate = (workerOffer.jobEstimate + 60) * workerOffer.workerRate / 60 + workerOffer.workerOnTop;
+      const jobPaymentEstimate = ((workerOffer.jobEstimate + 60) * workerOffer.workerRate) / 60 + workerOffer.workerOnTop;
       return onReleasePayment({
         timeSpent: timeSpent,
         jobPaymentEstimate: jobPaymentEstimate,
@@ -2114,7 +2114,7 @@ contract('JobController', function(accounts) {
        'when worked for less than an hour, with pauses/resumes', () => {
       const workerOffer = defaultWorkerOffer
       const timeSpent = 17;
-      const jobPaymentEstimate = workerOffer.workerRate / 60 * workerOffer.jobEstimate + workerOffer.workerOnTop;
+      const jobPaymentEstimate = (workerOffer.workerRate * workerOffer.jobEstimate) / 60 + workerOffer.workerOnTop;
       return onReleasePayment({
         timeSpent: timeSpent,
         jobPaymentEstimate: jobPaymentEstimate,
