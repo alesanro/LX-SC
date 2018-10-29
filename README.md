@@ -7,6 +7,12 @@
 $ npm install
 ```
 
+## Setup environment
+
+Setup `.env` when you are going to use Makefile or other scripts:
+
+- **PUBLISH_BRANCH** - setup name of the branch from which `npm run release` is allowed. Default is `develop`;
+
 # Running tests
 
 ```
