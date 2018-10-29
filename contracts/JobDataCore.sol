@@ -13,7 +13,7 @@ import "./base/BitOps.sol";
 contract JobDataCore is StorageAdapter, BitOps {
 
     /* JobState */
-    
+
     uint constant JOB_STATE_NOT_SET = 0;
     uint constant JOB_STATE_CREATED = 0x001;        // 00000000001
     uint constant JOB_STATE_OFFER_ACCEPTED = 0x002; // 00000000010
@@ -76,7 +76,7 @@ contract JobDataCore is StorageAdapter, BitOps {
 
     /// @dev Default pay for a posted job that are recommended for offers
     StorageInterface.UIntUIntMapping jobDefaultPay;  // jobId => default pay size
-    StorageInterface.UIntAddressUIntMapping jobOfferRate; // Per minute.
+    StorageInterface.UIntAddressUIntMapping jobOfferRate; // Per hour.
     StorageInterface.UIntAddressUIntMapping jobOfferEstimate; // In minutes.
     StorageInterface.UIntAddressUIntMapping jobOfferOntop; // Getting to the workplace, etc.
 
@@ -145,7 +145,7 @@ contract JobDataCore is StorageAdapter, BitOps {
         jobOfferPostedAt.init("jobOfferPostedAt");
 
         bindStatus.init("bindStatus");
-            
+
         return OK;
     }
 
@@ -156,7 +156,7 @@ contract JobDataCore is StorageAdapter, BitOps {
             return false;
         }
 
-        bool _featuresApproved = 
+        bool _featuresApproved =
             (WORKFLOW_TM == _flowType && _hasFlags(WORKFLOW_TM_FEATURES_ALLOWED, _featureFlags)) ||
             (WORKFLOW_FIXED_PRICE == _flowType && _hasFlags(WORKFLOW_FIXED_PRICE_FEATURES_ALLOWED, _featureFlags));
         if (!_featuresApproved) {
@@ -173,7 +173,7 @@ contract JobDataCore is StorageAdapter, BitOps {
             if (_needsConfirmation && _jobState == JOB_STATE_WORK_ACCEPTED) {
                 return true;
             }
-            
+
             if (!_needsConfirmation &&
                 (_jobState == JOB_STATE_PENDING_FINISH || _jobState == JOB_STATE_WORK_ACCEPTED)
             ) {
@@ -190,7 +190,7 @@ contract JobDataCore is StorageAdapter, BitOps {
 
     function _isStartedStateForFlow(uint _flow, uint _jobState) internal pure returns (bool) {
         bool _needsConfirmation = (_flow & WORKFLOW_CONFIRMATION_NEEDED_FLAG) != 0;
-        if (_needsConfirmation && 
+        if (_needsConfirmation &&
         _jobState == JOB_STATE_STARTED) {
             return true;
         }
@@ -206,7 +206,7 @@ contract JobDataCore is StorageAdapter, BitOps {
         if (_jobState == JOB_STATE_OFFER_ACCEPTED) {
             return true;
         }
-        
+
         if (_jobState == JOB_STATE_PENDING_START) {
             return true;
         }

@@ -108,7 +108,7 @@ contract("JobController workflows", accounts => {
 		const jobSkills = 4;
 		const additionalTime = 60;
 
-		const workerRate = '0x12f2a36ecd555';
+		const workerRate = '0x470de4df81ffec';
 		const workerOnTop = '0x12f2a36ecd555';
 		const jobEstimate = 180;
 
@@ -169,7 +169,7 @@ contract("JobController workflows", accounts => {
 		const jobCategory = 4;
 		const jobSkills = 4;
 
-		const workerRate = '0x12f2a36ecd555';
+		const workerRate = '0x470de4df81ffec';
 
 		// Represents full chain of interactions between client and worker
 		// Provided `operation` will try to execute on each stage, comparing with expected results
@@ -260,7 +260,7 @@ contract("JobController workflows", accounts => {
 		const skillsCategory = params.skillsCategory || '4';
 		const skills = params.skills || '555';
 
-		const workerRate = params.workerRate || '0x12f2a36ecd555';
+		const workerRate = params.workerRate || '0x470de4df81ffec';
 		const workerOnTop = params.workerOnTop || '0x12f2a36ecd555';
 		const jobEstimate = params.jobEstimate || 180;
 
@@ -751,12 +751,12 @@ contract("JobController workflows", accounts => {
 				})
 
 				it('should lock correct amount of tokens on `acceptOffer`', async () => {
-					const workerRate = 200000000000;
+					const workerRate = 12000000000000;
 					const workerOnTop = 1000000000;
 					const jobEstimate = 240;
 
 					const estimatedLockAmount = Math.floor(
-						((workerRate * (jobEstimate + 60) + workerOnTop) / 10) * 11
+						(((workerRate * (jobEstimate + 60)) / 60 + workerOnTop) / 10) * 11
 					);
 
 					let clientBalanceBefore = await contracts.paymentGateway.getBalance(client)
@@ -784,7 +784,7 @@ contract("JobController workflows", accounts => {
 				const jobSkills = 4;
 				const jobDetails = jobDetailsIPFSHash;
 				const additionalTime = 60;
-				const workerRate = '0x12f2a36ecd555';
+				const workerRate = '0x470de4df81ffec';
 				const workerOnTop = '0x12f2a36ecd555';
 				const jobEstimate = 180;
 
@@ -994,7 +994,7 @@ contract("JobController workflows", accounts => {
 
 				it('should allow anyone to post an offer for a job only when a job has CREATED status', async () => {
 					const operation = contracts.jobController.postJobOffer;
-					const args = [jobId, '0x12F2A36ECD555', 180, '0x12F2A36ECD555', { from: worker, }];
+					const args = [jobId, '0x470de4df81ffec', 180, '0x12F2A36ECD555', { from: worker, }];
 					const results = {
 						CREATED: ErrorsNamespace.OK,
 						OFFER_ACCEPTED: ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE,
@@ -1080,7 +1080,7 @@ contract("JobController workflows", accounts => {
 				const jobSkills = 4;
 				const jobDetails = jobDetailsIPFSHash;
 
-				const workerRate = '0x12f2a36ecd555';
+				const workerRate = '0x470de4df81ffec';
 				const workerOnTop = '0x12f2a36ecd555';
 				const jobEstimate = 180;
 
@@ -1128,7 +1128,7 @@ contract("JobController workflows", accounts => {
 
 		context('Time adjustments', () => {
 			const jobId = 1
-			const workerRate = '0x12f2a36ecd555';
+			const workerRate = '0x470de4df81ffec';
 			const workerOnTop = '0x12f2a36ecd555';
 			const jobEstimate = 180;
 			const additionalTime = 60
@@ -1210,7 +1210,7 @@ contract("JobController workflows", accounts => {
 				skillsArea: '4',
 				skillsCategory: '4',
 				skills: '555',
-				workerRate: '0x12f2a36ecd555',
+				workerRate: '0x470de4df81ffec',
 				workerOnTop: '0x12f2a36ecd555',
 				jobEstimate: 180,
 			})
@@ -1298,7 +1298,7 @@ contract("JobController workflows", accounts => {
 
 		context('Reward release', () => {
 			const jobId = 1;
-			const workerRate = 200000000000;
+			const workerRate = 12000000000000;
 			const workerOnTop = 1000000000;
 			const jobEstimate = 240;
 			var payment
@@ -1405,7 +1405,7 @@ contract("JobController workflows", accounts => {
 				})
 
 				describe("on `cancelJob` at PENDING_STARTED job stage", () => {
-					const jobPaymentEstimate = workerRate * 60 + workerOnTop;
+					const jobPaymentEstimate = workerRate + workerOnTop;
 
 					beforeEach(async () => {
 						await contracts.jobController.startWork(jobId, { from: worker, })
@@ -1435,7 +1435,7 @@ contract("JobController workflows", accounts => {
 				})
 
 				describe("on `cancelJob` at STARTED job stage'", () => {
-					const jobPaymentEstimate = workerRate * 60 + workerOnTop;
+					const jobPaymentEstimate = workerRate + workerOnTop;
 
 					beforeEach(async () => {
 						await contracts.jobController.startWork(jobId, { from: worker, })
@@ -1468,7 +1468,7 @@ contract("JobController workflows", accounts => {
 
 			describe('when releasing payment after work is done', () => {
 
-				const jobPaymentEstimate = (timeSpent) => jobParams.workerRate * timeSpent + jobParams.workerOnTop;
+				const jobPaymentEstimate = (timeSpent) => (jobParams.workerRate * timeSpent) / 60 + jobParams.workerOnTop;
 
 				afterEach(async () => await reverter.revert())
 
@@ -1584,7 +1584,7 @@ contract("JobController workflows", accounts => {
 				const estimate = 68;
 				const ontop = 59;
 				/**
-				 * With these values,  ((rate * (estimate + 60) + ontop) / 10) * 11  will equal near the uint256 value
+				 * With these values,  (((rate * (estimate + 60)) / 60 + ontop) / 10) * 11  will equal near the uint256 value
 				 */
 				assert.equal(
 					(await contracts.jobController.postJobOffer.call(jobId, rate, estimate, ontop, { from: worker, })).toNumber(),
@@ -1694,7 +1694,7 @@ contract("JobController workflows", accounts => {
 				const jobArea = 4;
 				const jobCategory = 4;
 				const jobSkills = 4;
-				const workerRate = '0x12f2a36ecd555';
+				const workerRate = '0x470de4df81ffec';
 
 				before(async () => {
 					await contracts.jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
@@ -1978,7 +1978,7 @@ contract("JobController workflows", accounts => {
 				skillsArea: '4',
 				skillsCategory: '4',
 				skills: '555',
-				workerRate: '0x12f2a36ecd555',
+				workerRate: '0x470de4df81ffec',
 			})
 
 			describe("with accepted job", () => {
@@ -2008,7 +2008,7 @@ contract("JobController workflows", accounts => {
 
 		describe('Reward release', () => {
 			const jobId = '1'
-			const workerRate = 200000000000;
+			const workerRate = 12000000000000;
 
 			var payment
 			var clientBalanceBefore

@@ -22,15 +22,15 @@ contract('Integration tests (user stories)', (accounts) => {
     const reverter = new Reverter(web3);
 
     const JobState = {
-        NOT_SET: 0, 
-        CREATED: 2**0, 
-        OFFER_ACCEPTED: 2**1, 
-        PENDING_START: 2**2, 
-        STARTED: 2**3, 
-        PENDING_FINISH: 2**4, 
+        NOT_SET: 0,
+        CREATED: 2**0,
+        OFFER_ACCEPTED: 2**1,
+        PENDING_START: 2**2,
+        STARTED: 2**3,
+        PENDING_FINISH: 2**4,
         FINISHED: 2**6, // DEPRECATED: see WORK_ACCEPTED
-        WORK_ACCEPTED: 2**6, 
-        WORK_REJECTED: 2**7, 
+        WORK_ACCEPTED: 2**6,
+        WORK_REJECTED: 2**7,
         FINALIZED: 2**8,
     };
 
@@ -164,12 +164,12 @@ contract('Integration tests (user stories)', (accounts) => {
 
     const setupBoardWithJobs = async (/*board = board, jobs = jobs*/) => {
         board.id = await setupBoard(board)
-        
+
         for (var i = 0; i < jobs.length; ++i) {
             const job = jobs[i]
             let jobId = await setupJob(job)
             jobs[i].id = jobId
-            
+
             await bindJobWithBoard(jobId, board.id)
         }
     }
@@ -339,21 +339,21 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("worker should be able to post an offer with OK code", async () => {
-                assert.equal((await contracts.jobController.postJobOffer.call(job.id, 100, 100, 100, { from: users.worker })).toNumber(), ErrorsScope.OK)
+                assert.equal((await contracts.jobController.postJobOffer.call(job.id, 6000, 100, 100, { from: users.worker })).toNumber(), ErrorsScope.OK)
             })
 
             it("worker should be able to post an offer", async () => {
-                const tx = await contracts.jobController.postJobOffer(job.id, 100, 100, 100, { from: users.worker })
+                const tx = await contracts.jobController.postJobOffer(job.id, 6000, 100, 100, { from: users.worker })
                 const jobOfferPostedEvent = (await eventsHelper.findEvent([contracts.jobController,], tx, "JobOfferPosted"))[0]
                 assert.isDefined(jobOfferPostedEvent)
             })
 
             it("other worker should also be able to post an offer with OK code", async () => {
-                assert.equal((await contracts.jobController.postJobOffer.call(job.id, 90, 110, 80, { from: users.worker2 })).toNumber(), ErrorsScope.OK)
+                assert.equal((await contracts.jobController.postJobOffer.call(job.id, 5400, 110, 80, { from: users.worker2 })).toNumber(), ErrorsScope.OK)
             })
 
             it("other worker should also be able to post an offer", async () => {
-                const tx = await contracts.jobController.postJobOffer(job.id, 90, 110, 80, { from: users.worker2 })
+                const tx = await contracts.jobController.postJobOffer(job.id, 5400, 110, 80, { from: users.worker2 })
                 const jobOfferPostedEvent = (await eventsHelper.findEvent([contracts.jobController,], tx, "JobOfferPosted"))[0]
                 assert.isDefined(jobOfferPostedEvent)
             })
@@ -392,7 +392,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 job = jobs[0]
                 await setupWorker(job, users.worker)
 
-                await contracts.jobController.postJobOffer(job.id, 100, 100, 100, { from: users.worker })
+                await contracts.jobController.postJobOffer(job.id, 6000, 100, 100, { from: users.worker })
 
                 const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker, job.id)
                 await contracts.jobController.acceptOffer(job.id, users.worker, { from: users.client, value: payment})
@@ -461,7 +461,7 @@ contract('Integration tests (user stories)', (accounts) => {
             let afterPaymentWorkerEthPayment
 
             it("worker without increasing time should receive his payment after finishing work", async () => {
-                await contracts.jobController.postJobOffer(job.id, 100, 100, 100, { from: users.worker })
+                await contracts.jobController.postJobOffer(job.id, 6000, 100, 100, { from: users.worker })
                 const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker, job.id)
                 await contracts.jobController.acceptOffer(job.id, users.worker, { from: users.client, value: payment})
                 await contracts.jobController.startWork(job.id, { from: users.worker })
@@ -479,7 +479,7 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("the other worker should be able to apply for a job", async () => {
-                await contracts.jobController.postJobOffer(otherJob.id, 100, 100, 100, { from: users.worker2 })
+                await contracts.jobController.postJobOffer(otherJob.id, 6000, 100, 100, { from: users.worker2 })
                 const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker2, otherJob.id)
                 await contracts.jobController.acceptOffer(otherJob.id, users.worker2, { from: users.client, value: payment})
                 await contracts.jobController.startWork(otherJob.id, { from: users.worker2 })
@@ -498,7 +498,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await contracts.jobController.submitAdditionalTimeRequest(otherJob.id, additionalTime, { from: users.worker2, })
                 const additionalPayment = await contracts.jobsDataProvider.calculateLock(users.worker2, otherJob.id, additionalTime, 0)
                 assert.equal(
-                    (await contracts.jobController.acceptAdditionalTimeRequest.call(otherJob.id, additionalTime, { from: users.client, value: additionalPayment, })).toNumber(), 
+                    (await contracts.jobController.acceptAdditionalTimeRequest.call(otherJob.id, additionalTime, { from: users.client, value: additionalPayment, })).toNumber(),
                     ErrorsScope.OK
                 )
             })
@@ -552,7 +552,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 expectedWorkerRating[users.worker] = 9
                 skillRatings[job.skills] = 8
 
-                await contracts.jobController.postJobOffer(job.id, 100, 100, 100, { from: users.worker })
+                await contracts.jobController.postJobOffer(job.id, 6000, 100, 100, { from: users.worker })
                 const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker, job.id)
                 await contracts.jobController.acceptOffer(job.id, users.worker, { from: users.client, value: payment})
                 await contracts.jobController.startWork(job.id, { from: users.worker })
@@ -666,20 +666,20 @@ contract('Integration tests (user stories)', (accounts) => {
                     let jobSkillsCategory = await contracts.jobsDataProvider.getJobSkillsCategory.call(jobId)
                     let jobSkills = await contracts.jobsDataProvider.getJobSkills.call(jobId)
                     let jobState = await contracts.jobsDataProvider.getJobState.call(jobId)
-    
+
                     if (jobState != JobState.CREATED) {
                         continue
                     }
-    
+
                     if (jobSkillsArea != workerExpertise.area ||
                         jobSkillsCategory != workerExpertise.category ||
                         jobSkills != workerExpertise.skills)
                     {
                         continue
                     }
-    
+
                     appropriateJobIds.push(jobId)
-                    
+
                 }
 
                 assert.notEqual(appropriateJobIds.length, 0)
@@ -689,11 +689,11 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("should be able to post an offer with OK code", async () => {
                 gotJobId = appropriateJobIds[Math.floor(Math.random()*appropriateJobIds.length)];
-                assert.equal((await contracts.jobController.postJobOffer.call(gotJobId, 200, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.OK)
+                assert.equal((await contracts.jobController.postJobOffer.call(gotJobId, 12000, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.OK)
             })
 
             it("should be able to post an offer", async () => {
-                let tx = await contracts.jobController.postJobOffer(gotJobId, 200, 200, 100, { from: users.worker })
+                let tx = await contracts.jobController.postJobOffer(gotJobId, 12000, 200, 100, { from: users.worker })
                 let postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPosted'))[0]
                 assert.isDefined(postJobOfferEvent)
             })
@@ -709,7 +709,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
                 await setupWorker(job, users.worker)
 
-                await contracts.jobController.postJobOffer(job.id, 200, 200, 100, { from: users.worker })
+                await contracts.jobController.postJobOffer(job.id, 12000, 200, 100, { from: users.worker })
                 const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker, job.id)
                 await contracts.jobController.acceptOffer(job.id, users.worker, { from: users.client, value: payment})
             })
@@ -796,20 +796,20 @@ contract('Integration tests (user stories)', (accounts) => {
                     const jobSkillsCategory = await contracts.jobsDataProvider.getJobSkillsCategory.call(jobId)
                     const jobSkills = await contracts.jobsDataProvider.getJobSkills.call(jobId)
                     const jobState = await contracts.jobsDataProvider.getJobState.call(jobId)
-    
+
                     if (jobState != JobState.CREATED) {
                         continue
                     }
-    
+
                     if (jobSkillsArea != workerExpertise.area ||
                         jobSkillsCategory != workerExpertise.category ||
                         jobSkills != workerExpertise.skills)
                     {
                         continue
                     }
-    
+
                     appropriateJobIds.push(jobId)
-                    
+
                 }
 
                 assert.isAtLeast(appropriateJobIds.length, 2)
@@ -818,7 +818,7 @@ contract('Integration tests (user stories)', (accounts) => {
             it("should be able to apply for the first job", async () => {
                 const jobId = appropriateJobIds[0]
 
-                const tx = await contracts.jobController.postJobOffer(jobId, 200, 200, 100, { from: users.worker })
+                const tx = await contracts.jobController.postJobOffer(jobId, 12000, 200, 100, { from: users.worker })
                 const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPosted'))[0]
                 assert.isDefined(postJobOfferEvent)
             })
@@ -826,7 +826,7 @@ contract('Integration tests (user stories)', (accounts) => {
             it("should be able to apply for the second job", async () => {
                 const jobId = appropriateJobIds[1]
 
-                const tx = await contracts.jobController.postJobOffer(jobId, 200, 200, 100, { from: users.worker })
+                const tx = await contracts.jobController.postJobOffer(jobId, 12000, 200, 100, { from: users.worker })
                 const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPosted'))[0]
                 assert.isDefined(postJobOfferEvent)
             })
@@ -842,7 +842,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await setupWorker(job, users.worker)
                 await setupWorker(job, users.worker2)
 
-                await contracts.jobController.postJobOffer(job.id, 100, 100, 100, { from: users.worker })
+                await contracts.jobController.postJobOffer(job.id, 12000, 100, 100, { from: users.worker })
             })
 
             after(async () => {
@@ -851,41 +851,41 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("other worker should be able to post job offer with OK code", async () => {
-                assert.equal((await contracts.jobController.postJobOffer.call(job.id, 95, 100, 90, { from: users.worker2 })).toNumber(), ErrorsScope.OK)
+                assert.equal((await contracts.jobController.postJobOffer.call(job.id, 5700, 100, 90, { from: users.worker2 })).toNumber(), ErrorsScope.OK)
             })
 
             it("other worker should be able to post job offer", async () => {
-                const tx = await contracts.jobController.postJobOffer(job.id, 95, 100, 90, { from: users.worker2 })
+                const tx = await contracts.jobController.postJobOffer(job.id, 5700, 100, 90, { from: users.worker2 })
                 const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPosted'))[0]
                 assert.isDefined(postJobOfferEvent)
             })
 
             it("worker should be able to update his job offer with OK code", async () => {
-                assert.equal((await contracts.jobController.postJobOffer.call(job.id, 90, 100, 90, { from: users.worker })).toNumber(), ErrorsScope.OK)
+                assert.equal((await contracts.jobController.postJobOffer.call(job.id, 5400, 100, 90, { from: users.worker })).toNumber(), ErrorsScope.OK)
             })
 
             it("worker should be able to update his job offer", async () => {
-                const tx = await contracts.jobController.postJobOffer(job.id, 90, 100, 90, { from: users.worker })
+                const tx = await contracts.jobController.postJobOffer(job.id, 5400, 100, 90, { from: users.worker })
                 const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPosted'))[0]
                 assert.isDefined(postJobOfferEvent)
             })
 
             it("other worker should be able to update his job offer with OK code", async () => {
-                assert.equal((await contracts.jobController.postJobOffer.call(job.id, 80, 95, 85, { from: users.worker2 })).toNumber(), ErrorsScope.OK)
+                assert.equal((await contracts.jobController.postJobOffer.call(job.id, 4800, 95, 85, { from: users.worker2 })).toNumber(), ErrorsScope.OK)
             })
 
             it("other worker should be able to update his job offer", async () => {
-                const tx = await contracts.jobController.postJobOffer(job.id, 80, 95, 85, { from: users.worker2 })
+                const tx = await contracts.jobController.postJobOffer(job.id, 4800, 95, 85, { from: users.worker2 })
                 const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPosted'))[0]
                 assert.isDefined(postJobOfferEvent)
             })
 
             it("worker should be able to update his job offer with OK code", async () => {
-                assert.equal((await contracts.jobController.postJobOffer.call(job.id, 90, 80, 80, { from: users.worker })).toNumber(), ErrorsScope.OK)
+                assert.equal((await contracts.jobController.postJobOffer.call(job.id, 5400, 80, 80, { from: users.worker })).toNumber(), ErrorsScope.OK)
             })
 
             it("worker should be able to update his job offer", async () => {
-                const tx = await contracts.jobController.postJobOffer(job.id, 90, 80, 80, { from: users.worker })
+                const tx = await contracts.jobController.postJobOffer(job.id, 5400, 80, 80, { from: users.worker })
                 const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPosted'))[0]
                 assert.isDefined(postJobOfferEvent)
             })
@@ -931,7 +931,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
                 await setupWorker(job, users.worker)
 
-                const postJobOfferTx = await contracts.jobController.postJobOffer(job.id, 200, 200, 100, { from: users.worker })
+                const postJobOfferTx = await contracts.jobController.postJobOffer(job.id, 12000, 200, 100, { from: users.worker })
                 const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], postJobOfferTx, 'JobOfferPosted'))[0]
                 assert.isDefined(postJobOfferEvent)
 
@@ -1001,7 +1001,7 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("other worker should be able to perform his work during the same period but without pauses", async () => {
-                await contracts.jobController.postJobOffer(otherJob.id, 200, 200, 100, { from: users.worker2 })
+                await contracts.jobController.postJobOffer(otherJob.id, 12000, 200, 100, { from: users.worker2 })
                 const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker2, otherJob.id)
                 await contracts.jobController.acceptOffer(otherJob.id, users.worker2, { from: users.client, value:payment})
                 await contracts.jobController.startWork(otherJob.id, { from: users.worker2 })
@@ -1044,7 +1044,7 @@ contract('Integration tests (user stories)', (accounts) => {
             })
 
             it("should not be able to leave feedback after posting job offer with RATING_AND_REPUTATION_CANNOT_SET_RATING code", async () => {
-                await contracts.jobController.postJobOffer(job.id, 100, 100, 100, { from: users.worker })
+                await contracts.jobController.postJobOffer(job.id, 6000, 100, 100, { from: users.worker })
 
                 assert.equal((await contracts.ratingLibrary.setJobRating.call(users.client, expectedJobRating[users.client], job.id, { from: users.worker })).toNumber(), ErrorsScope.RATING_AND_REPUTATION_CANNOT_SET_RATING)
             })
@@ -1138,7 +1138,7 @@ contract('Integration tests (user stories)', (accounts) => {
             describe("match all skills", async () => {
 
                 it("should be able to post an offer for a job if have enough skill with OK code", async () => {
-                    assert.equal((await contracts.jobController.postJobOffer.call(applicableJob.id, 200, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.OK)
+                    assert.equal((await contracts.jobController.postJobOffer.call(applicableJob.id, 12000, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.OK)
                 })
             })
 
@@ -1149,7 +1149,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 })
 
                 it("should not be able to post an offer for a job if does not have enough skills for it with JOB_CONTROLLER_INVALID_SKILLS code", async () => {
-                    assert.equal((await contracts.jobController.postJobOffer.call(notApplicableJob.id, 200, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.JOB_CONTROLLER_INVALID_SKILLS)
+                    assert.equal((await contracts.jobController.postJobOffer.call(notApplicableJob.id, 12000, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.JOB_CONTROLLER_INVALID_SKILLS)
                 })
             })
 
@@ -1160,7 +1160,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 })
 
                 it("should not be able to post an offer for a job if does not have enough skills for it with JOB_CONTROLLER_INVALID_SKILLS code", async () => {
-                    assert.equal((await contracts.jobController.postJobOffer.call(notApplicableJob.id, 200, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.JOB_CONTROLLER_INVALID_SKILLS)
+                    assert.equal((await contracts.jobController.postJobOffer.call(notApplicableJob.id, 12000, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.JOB_CONTROLLER_INVALID_SKILLS)
                 })
             })
 
@@ -1171,7 +1171,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 })
 
                 it("should not be able to post an offer for a job if does not have enough skills for it with JOB_CONTROLLER_INVALID_SKILLS code", async () => {
-                    assert.equal((await contracts.jobController.postJobOffer.call(notApplicableJob.id, 200, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.JOB_CONTROLLER_INVALID_SKILLS)
+                    assert.equal((await contracts.jobController.postJobOffer.call(notApplicableJob.id, 12000, 200, 100, { from: users.worker })).toNumber(), ErrorsScope.JOB_CONTROLLER_INVALID_SKILLS)
                 })
             })
         })
@@ -1193,7 +1193,7 @@ contract('Integration tests (user stories)', (accounts) => {
         before(async () => {
             userRecoveryAddress = contracts.recovery.address
             await contracts.userFactory.setUserRecoveryAddress(userRecoveryAddress)
-            
+
             const recoverData = contracts.recovery.contract.recoverUser.getData(0x0, 0x0)
             await contracts.rolesLibrary.addRoleCapability(roles.moderator, userRecoveryAddress, recoverData, { from: users.contractOwner })
         })
