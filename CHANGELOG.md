@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
 <a name="0.0.11-alpha.1"></a>
+## 0.0.11-alpha.1 (2018-10-31)
+
+
+### Bug Fixes
+
+* **jobs:** LABX-858 added full payment if worker has completed the job within just an hour ([bc5585f](https://github.com/ChronoBank/LX-SC/commit/bc5585f))
+
+
+### Features
+
+* **boardcontroller:** use more filter parameters to find jobs (`creator` and `status`) ([3c7583e](https://github.com/ChronoBank/LX-SC/commit/3c7583e))
+* **jobcontroller:** add job's binding during job posting process ([f563581](https://github.com/ChronoBank/LX-SC/commit/f563581))
+* **jobcontroller:** refactor JobController to reduce deployment size ([2da656a](https://github.com/ChronoBank/LX-SC/commit/2da656a))
+* **jobcontroller:** remove skill check while posting job offer ([a347371](https://github.com/ChronoBank/LX-SC/commit/a347371))
+* **jobcontroller:** update dispute scheme for rejected work results. ([f9fc225](https://github.com/ChronoBank/LX-SC/commit/f9fc225))
+* **jobcontroller:** update job flow to use accept/reject for TM jobs ([f7a09bc](https://github.com/ChronoBank/LX-SC/commit/f7a09bc))
+* **jobs:** measure "rate" in hours (not in minutes) so we have verifiable results for total payment amount ([0b39abf](https://github.com/ChronoBank/LX-SC/commit/0b39abf))
+* **project:** LABX-894 add initialization script ([c08a14a](https://github.com/ChronoBank/LX-SC/commit/c08a14a))
+
+
+
+<a name="0.0.11-alpha.1"></a>
 ## 0.0.11-alpha.1 (2018-09-18)
 
 
