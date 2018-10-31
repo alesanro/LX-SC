@@ -1,5 +1,7 @@
 //require("babel-register");
-var HDWalletProvider = require("truffle-hdwallet-provider");
+var HDWalletProvider = require("truffle-hdwallet-privkey-provider");
+var secrets = require("./keystore/secrets.json")
+
 function getWallet(){
     try{
         return require('fs').readFileSync("./wallet.json", "utf8").trim();
@@ -18,7 +20,7 @@ module.exports = {
         },
         ntr1x: {
             network_id: 0x58,
-            provider: function () { return new HDWalletProvider(getWallet(),'QWEpoi123','https://node2.parity.tp.ntr1x.com:8545')},
+            provider: function () { return new HDWalletProvider(secrets.privateKeys,'https://node2.parity.tp.ntr1x.com:8545')},
             gas: 4700000,
             gasPrice: 1000000000
         }
