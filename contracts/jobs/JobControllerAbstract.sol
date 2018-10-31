@@ -25,23 +25,23 @@ contract BoardControllerInterface {
 contract PaymentProcessorInterface {
     function lockPayment(bytes32 _operationId, address _from) public payable returns (uint);
     function releasePayment(
-        bytes32 _operationId, 
-        address _to, 
-        uint _value, 
-        address _change, 
-        uint _feeFromValue, 
+        bytes32 _operationId,
+        address _to,
+        uint _value,
+        address _change,
+        uint _feeFromValue,
         uint _additionalFee
-        ) 
-        public 
+        )
+        public
         returns (uint);
 }
 
 
 contract JobControllerEmitter is MultiEventsHistoryAdapter {
-    
+
     event JobPosted(address indexed self, uint indexed jobId, bytes32 flowType, address client, uint skillsArea, uint skillsCategory, uint skills, uint defaultPay, bytes32 detailsIPFSHash, bool bindStatus);
-    event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint rate, uint estimate, uint ontop);
-    event JobOfferPosted(address indexed self, uint indexed jobId, address worker, uint price);
+    event JobOfferPostedTimesBased(address indexed self, uint indexed jobId, address worker, uint rate, uint estimate, uint ontop);
+    event JobOfferPostedFixedPrice(address indexed self, uint indexed jobId, address worker, uint price);
     event JobOfferAccepted(address indexed self, uint indexed jobId, address worker);
     event StartWorkRequested(address indexed self, uint indexed jobId, uint at);
     event WorkStarted(address indexed self, uint indexed jobId, uint at);
@@ -77,12 +77,12 @@ contract JobControllerEmitter is MultiEventsHistoryAdapter {
         emit JobPosted(_self(), _jobId, bytes32(_flowType), _client, _skillsArea, _skillsCategory, _skills, _defaultPay, _detailsIPFSHash, _bindStatus);
     }
 
-    function emitJobOfferPosted(uint _jobId, address _worker, uint _rate, uint _estimate, uint _ontop) public {
-        emit JobOfferPosted(_self(), _jobId, _worker, _rate, _estimate, _ontop);
+    function emitJobOfferPostedTimesBased(uint _jobId, address _worker, uint _rate, uint _estimate, uint _ontop) public {
+        emit JobOfferPostedTimesBased(_self(), _jobId, _worker, _rate, _estimate, _ontop);
     }
 
-    function emitJobOfferPosted(uint _jobId, address _worker, uint _price) public {
-        emit JobOfferPosted(_self(), _jobId, _worker, _price);
+    function emitJobOfferPostedFixedPrice(uint _jobId, address _worker, uint _price) public {
+        emit JobOfferPostedFixedPrice(_self(), _jobId, _worker, _price);
     }
 
     function emitJobOfferAccepted(uint _jobId, address _worker) public {

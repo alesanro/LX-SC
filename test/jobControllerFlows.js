@@ -288,13 +288,13 @@ contract("JobController workflows", accounts => {
 		}
 
 		this._testTMJobOfferPosted = () => {
-			it("should emit 'JobOfferPosted' event on posting a job offer", async () => {
+			it("should emit 'JobOfferPostedTimesBased' event on posting a job offer", async () => {
 				const tx = await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
 
-				const events = eventsHelper.extractEvents(tx, "JobOfferPosted")
+				const events = eventsHelper.extractEvents(tx, "JobOfferPostedTimesBased")
 				assert.equal(events.length, 1);
 				assert.equal(events[0].address, contracts.multiEventsHistory.address);
-				assert.equal(events[0].event, 'JobOfferPosted');
+				assert.equal(events[0].event, 'JobOfferPostedTimesBased');
 
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
@@ -307,13 +307,13 @@ contract("JobController workflows", accounts => {
 		}
 
 		this._testFixedPriceJobOfferPosted = () => {
-			it("should emit 'JobOfferPosted' event on posting a job offer with fixed price", async () => {
+			it("should emit 'JobOfferPostedFixedPrice' event on posting a job offer with fixed price", async () => {
 				const tx = await contracts.jobController.postJobOfferWithPrice(jobId, workerRate, { from: worker, })
 
-				const events = eventsHelper.extractEvents(tx, "JobOfferPosted")
+				const events = eventsHelper.extractEvents(tx, "JobOfferPostedFixedPrice")
 				assert.equal(events.length, 1);
 				assert.equal(events[0].address, contracts.multiEventsHistory.address);
-				assert.equal(events[0].event, 'JobOfferPosted');
+				assert.equal(events[0].event, 'JobOfferPostedFixedPrice');
 
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);

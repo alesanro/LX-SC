@@ -1438,11 +1438,11 @@ contract('JobController', function(accounts) {
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
           )
         )
-        .then(tx => eventsHelper.extractEvents(tx, "JobOfferPosted"))
+        .then(tx => eventsHelper.extractEvents(tx, "JobOfferPostedTimesBased"))
         .then(events => {
           assert.equal(events.length, 1);
           assert.equal(events[0].address, multiEventsHistory.address);
-          assert.equal(events[0].event, 'JobOfferPosted');
+          assert.equal(events[0].event, 'JobOfferPostedTimesBased');
           const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), jobId);
@@ -1609,11 +1609,11 @@ contract('JobController', function(accounts) {
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
           )
         )
-        .then(tx => eventsHelper.extractEvents(tx, "JobOfferPosted"))
+        .then(tx => eventsHelper.extractEvents(tx, "JobOfferPostedTimesBased"))
         .then(events => {
           assert.equal(events.length, 1);
           assert.equal(events[0].address, multiEventsHistory.address);
-          assert.equal(events[0].event, 'JobOfferPosted');
+          assert.equal(events[0].event, 'JobOfferPostedTimesBased');
           const log = events[0].args;
           assert.equal(log.self, jobController.address);
           assert.equal(log.jobId.toString(), jobId);

@@ -344,7 +344,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("worker should be able to post an offer", async () => {
                 const tx = await contracts.jobController.postJobOffer(job.id, 6000, 100, 100, { from: users.worker })
-                const jobOfferPostedEvent = (await eventsHelper.findEvent([contracts.jobController,], tx, "JobOfferPosted"))[0]
+                const jobOfferPostedEvent = (await eventsHelper.findEvent([contracts.jobController,], tx, "JobOfferPostedTimesBased"))[0]
                 assert.isDefined(jobOfferPostedEvent)
             })
 
@@ -354,7 +354,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("other worker should also be able to post an offer", async () => {
                 const tx = await contracts.jobController.postJobOffer(job.id, 5400, 110, 80, { from: users.worker2 })
-                const jobOfferPostedEvent = (await eventsHelper.findEvent([contracts.jobController,], tx, "JobOfferPosted"))[0]
+                const jobOfferPostedEvent = (await eventsHelper.findEvent([contracts.jobController,], tx, "JobOfferPostedTimesBased"))[0]
                 assert.isDefined(jobOfferPostedEvent)
             })
 
@@ -694,7 +694,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("should be able to post an offer", async () => {
                 let tx = await contracts.jobController.postJobOffer(gotJobId, 12000, 200, 100, { from: users.worker })
-                let postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPosted'))[0]
+                let postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPostedTimesBased'))[0]
                 assert.isDefined(postJobOfferEvent)
             })
         })
@@ -819,7 +819,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 const jobId = appropriateJobIds[0]
 
                 const tx = await contracts.jobController.postJobOffer(jobId, 12000, 200, 100, { from: users.worker })
-                const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPosted'))[0]
+                const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPostedTimesBased'))[0]
                 assert.isDefined(postJobOfferEvent)
             })
 
@@ -827,7 +827,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 const jobId = appropriateJobIds[1]
 
                 const tx = await contracts.jobController.postJobOffer(jobId, 12000, 200, 100, { from: users.worker })
-                const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPosted'))[0]
+                const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPostedTimesBased'))[0]
                 assert.isDefined(postJobOfferEvent)
             })
         })
@@ -856,7 +856,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("other worker should be able to post job offer", async () => {
                 const tx = await contracts.jobController.postJobOffer(job.id, 5700, 100, 90, { from: users.worker2 })
-                const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPosted'))[0]
+                const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPostedTimesBased'))[0]
                 assert.isDefined(postJobOfferEvent)
             })
 
@@ -866,7 +866,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("worker should be able to update his job offer", async () => {
                 const tx = await contracts.jobController.postJobOffer(job.id, 5400, 100, 90, { from: users.worker })
-                const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPosted'))[0]
+                const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPostedTimesBased'))[0]
                 assert.isDefined(postJobOfferEvent)
             })
 
@@ -876,7 +876,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("other worker should be able to update his job offer", async () => {
                 const tx = await contracts.jobController.postJobOffer(job.id, 4800, 95, 85, { from: users.worker2 })
-                const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPosted'))[0]
+                const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPostedTimesBased'))[0]
                 assert.isDefined(postJobOfferEvent)
             })
 
@@ -886,7 +886,7 @@ contract('Integration tests (user stories)', (accounts) => {
 
             it("worker should be able to update his job offer", async () => {
                 const tx = await contracts.jobController.postJobOffer(job.id, 5400, 80, 80, { from: users.worker })
-                const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPosted'))[0]
+                const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], tx, 'JobOfferPostedTimesBased'))[0]
                 assert.isDefined(postJobOfferEvent)
             })
 
@@ -932,7 +932,7 @@ contract('Integration tests (user stories)', (accounts) => {
                 await setupWorker(job, users.worker)
 
                 const postJobOfferTx = await contracts.jobController.postJobOffer(job.id, 12000, 200, 100, { from: users.worker })
-                const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], postJobOfferTx, 'JobOfferPosted'))[0]
+                const postJobOfferEvent = (await eventsHelper.findEvent([contracts.jobController], postJobOfferTx, 'JobOfferPostedTimesBased'))[0]
                 assert.isDefined(postJobOfferEvent)
 
                 const payment = await contracts.jobsDataProvider.calculateLockAmountFor(users.worker, job.id)
