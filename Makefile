@@ -50,10 +50,10 @@ run_testrpc: ## Runs testrpc from scripts
 	npx ganache-cli -g 1 --gasLimit 8000000 | grep -Ev "FilterSubprovider|eth_getFilterChanges"
 
 prepare_release_artifacts:
-	npx abi-minifier -o ./build/contracts-minified
-	mv -f ./build/contracts/ ./build/contracts-original/
-	mv -f ./build/contracts-minified/ ./build/contracts/
-	git add ./build/contracts/**
+	npx abi-minifier -o ./build/contracts-minified/
+	mv -fv ./build/contracts/ ./build/contracts-original/
+	mv -fv ./build/contracts-minified/ ./build/contracts/
+	git add -f ./build/contracts/**
 	git commit -m 'Aftifacts [ntr1x] minified'
 	
 prepare_release_package_json:
@@ -106,7 +106,7 @@ release_cleanup: ## Cleanup after release_internal
 
 release_after:
 	@if [[ "$(CURRENT_GIT_BRANCH)" != "$(RELEASE_BRANCH)" ]]; then \
-		echo "Invalid branch to finish release. Branch to finish: 'release'"; \
+		echo "Invalid branch to finish release. Branch to finish: '$(RELEASE_BRANCH)'"; \
 		exit 3; \
 	fi; \
 	release_version=$(PACKAGE_VERSION); \
@@ -124,3 +124,5 @@ release_after:
 	git tag "v$${release_version}"; \
 	git push origin develop; \
 	git push origin master --tags; \
+
+	git checkout develop
