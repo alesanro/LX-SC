@@ -48,22 +48,16 @@ lint.fix: lint.sol.fix lint.js.fix ## Lints all kind of files: *.sol, *.js and f
 
 run_testrpc: ## Runs testrpc from scripts
 	npx ganache-cli -g 1 --gasLimit 8000000 | grep -Ev "FilterSubprovider|eth_getFilterChanges"
-
-prepare_release_artifacts:
-	npx abi-minifier -o ./build/contracts-minified/
-	mv -fv ./build/contracts/ ./build/contracts-original/
-	mv -fv ./build/contracts-minified/ ./build/contracts/
-	git add -f ./build/contracts/**
-	git commit -m 'Aftifacts [ntr1x] minified'
 	
-prepare_release_package_json:
+prepare_publish_package_json: ## Prepares package.json for publishing only @laborx/sc-abi package
 	rm package.json
 	mv package.json-abionly package.json
 	mv .npmignore-abionly .npmignore
 
-revert_release_package_json:
+revert_publish_package_json: ## Reverts changes made by 'prepare_publish_package_json'
 	mv package.json package.json-abionly 
-	mv .npmignore .npmignore-abionly 
+	mv .npmignore .npmignore-abionly
+	git checkout package.json
 
 release_start: ## Start from this command when ready to release
 	@if [[ "$(CURRENT_GIT_BRANCH)" != "$(PUBLISH_BRANCH)" ]]; then \
@@ -74,6 +68,12 @@ release_start: ## Start from this command when ready to release
 	fi; \
 	git checkout -b $(RELEASE_BRANCH); \
 	
+prepare_release_artifacts: ## Prepares migrated artifacts to minimal size and commits them
+	npx abi-minifier -o ./build/contracts-minified/
+	mv -fv ./build/contracts/ ./build/contracts-original/
+	mv -fv ./build/contracts-minified/ ./build/contracts/
+	git add -f ./build/contracts/**
+	git commit -m 'Aftifacts [ntr1x] minified'
 
 release_finish: ## Intended to make final chagnes to release process
 	@if [[ "$(CURRENT_GIT_BRANCH)" != "$(RELEASE_BRANCH)" ]]; then \
@@ -96,15 +96,7 @@ release_finish: ## Intended to make final chagnes to release process
 
 	@echo "Package published successfully!"
 
-release_cleanup: ## Cleanup after release_internal
-	@echo "Release cleanup..."; \
-	git checkout $(PUBLISH_BRANCH); \
-	git branch -D $(RELEASE_BRANCH); \
-	git branch -rD $(RELEASE_BRANCH); \
-	git push origin :$(RELEASE_BRANCH)
-	echo "Done."; \
-
-release_after:
+release_after: ## Internal. Related to 'release_finish'
 	@if [[ "$(CURRENT_GIT_BRANCH)" != "$(RELEASE_BRANCH)" ]]; then \
 		echo "Invalid branch to finish release. Branch to finish: '$(RELEASE_BRANCH)'"; \
 		exit 3; \
@@ -116,6 +108,8 @@ release_after:
 	git push origin $(PACKAGE_VERSION) --tags; \
 	read -p "Should we release to 'master' branch too? " publish_answer; \
 	if [[ $${publish_answer} != "yes" ]]; then \
+		git tag "v$${release_version}"; \
+		git push origin $(PACKAGE_VERSION) --tags; \
 		echo "Good. Do it manually if needed. Done!"; \
 		exit 1; \
 	fi; \
@@ -126,3 +120,11 @@ release_after:
 	git push origin master --tags; \
 
 	git checkout develop
+
+release_cleanup: ## Cleanup after release_internal
+	@echo "Release cleanup..."; \
+	git checkout $(PUBLISH_BRANCH); \
+	git branch -D $(RELEASE_BRANCH); \
+	git branch -rD $(RELEASE_BRANCH); \
+	git push origin :$(RELEASE_BRANCH)
+	echo "Done."; \
