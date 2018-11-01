@@ -40,25 +40,25 @@ contract PaymentProcessorInterface {
 contract JobControllerEmitter is MultiEventsHistoryAdapter {
 
     event JobPosted(address indexed self, uint indexed jobId, bytes32 flowType, address client, uint skillsArea, uint skillsCategory, uint skills, uint defaultPay, bytes32 detailsIPFSHash, bool bindStatus);
-    event JobOfferPostedTimesBased(address indexed self, uint indexed jobId, address worker, uint rate, uint estimate, uint ontop);
-    event JobOfferPostedFixedPrice(address indexed self, uint indexed jobId, address worker, uint price);
-    event JobOfferAccepted(address indexed self, uint indexed jobId, address worker);
-    event StartWorkRequested(address indexed self, uint indexed jobId, uint at);
-    event WorkStarted(address indexed self, uint indexed jobId, uint at);
-    event TimeRequestSubmitted(address indexed self, uint indexed jobId, uint time);  // Additional `time` in minutes
-    event TimeRequestAccepted(address indexed self, uint indexed jobId, uint time);
-    event TimeRequestRejected(address indexed self, uint indexed jobId, uint time);
-    event WorkPaused(address indexed self, uint indexed jobId, uint at);
-    event WorkResumed(address indexed self, uint indexed jobId, uint at);
-    event EndWorkRequested(address indexed self, uint indexed jobId, uint at);
-    event WorkAccepted(address indexed self, uint indexed jobId, uint at);
-    event WorkRejected(address indexed self, uint indexed jobId, uint at);
-    event WorkDisputeResolved(address indexed self, uint indexed jobId, uint at);
-    event PaymentReleased(address indexed self, uint indexed jobId);
-    event JobCanceled(address indexed self, uint indexed jobId);
-    event Delegated(address indexed self, uint indexed jobId, uint at);
-    event SentForRedo(address indexed self, uint indexed jobId, uint at);
-    event PaidDelegated(address indexed self, uint indexed jobId, uint at);
+    event JobOfferPostedTimesBased(address indexed self, uint indexed jobId, address worker, address client, uint rate, uint estimate, uint ontop);
+    event JobOfferPostedFixedPrice(address indexed self, uint indexed jobId, address worker, address client, uint price);
+    event JobOfferAccepted(address indexed self, uint indexed jobId, address worker, address client);
+    event StartWorkRequested(address indexed self, uint indexed jobId, uint at, address worker, address client);
+    event WorkStarted(address indexed self, uint indexed jobId, uint at, address worker, address client);
+    event TimeRequestSubmitted(address indexed self, uint indexed jobId, uint time, address worker, address client);  // Additional `time` in minutes
+    event TimeRequestAccepted(address indexed self, uint indexed jobId, uint time, address worker, address client);
+    event TimeRequestRejected(address indexed self, uint indexed jobId, uint time, address worker, address client);
+    event WorkPaused(address indexed self, uint indexed jobId, uint at, address worker, address client);
+    event WorkResumed(address indexed self, uint indexed jobId, uint at, address worker, address client);
+    event EndWorkRequested(address indexed self, uint indexed jobId, uint at, address worker, address client);
+    event WorkAccepted(address indexed self, uint indexed jobId, uint at, address worker, address client);
+    event WorkRejected(address indexed self, uint indexed jobId, uint at, address worker, address client);
+    event WorkDisputeResolved(address indexed self, uint indexed jobId, uint at, address worker, address client);
+    event PaymentReleased(address indexed self, uint indexed jobId, address worker, address client);
+    event JobCanceled(address indexed self, uint indexed jobId, address worker, address client);
+    event Delegated(address indexed self, uint indexed jobId, uint at, address worker, address client);
+    event SentForRedo(address indexed self, uint indexed jobId, uint at, address worker, address client);
+    event PaidDelegated(address indexed self, uint indexed jobId, uint at, address worker, address client);
 
     function emitJobPosted(
         uint _jobId,
@@ -77,80 +77,80 @@ contract JobControllerEmitter is MultiEventsHistoryAdapter {
         emit JobPosted(_self(), _jobId, bytes32(_flowType), _client, _skillsArea, _skillsCategory, _skills, _defaultPay, _detailsIPFSHash, _bindStatus);
     }
 
-    function emitJobOfferPostedTimesBased(uint _jobId, address _worker, uint _rate, uint _estimate, uint _ontop) public {
-        emit JobOfferPostedTimesBased(_self(), _jobId, _worker, _rate, _estimate, _ontop);
+    function emitJobOfferPostedTimesBased(uint _jobId, address _worker, address _client, uint _rate, uint _estimate, uint _ontop) public {
+        emit JobOfferPostedTimesBased(_self(), _jobId, _worker, _client, _rate, _estimate, _ontop);
     }
 
-    function emitJobOfferPostedFixedPrice(uint _jobId, address _worker, uint _price) public {
-        emit JobOfferPostedFixedPrice(_self(), _jobId, _worker, _price);
+    function emitJobOfferPostedFixedPrice(uint _jobId, address _worker, address _client, uint _price) public {
+        emit JobOfferPostedFixedPrice(_self(), _jobId, _worker, _client, _price);
     }
 
-    function emitJobOfferAccepted(uint _jobId, address _worker) public {
-        emit JobOfferAccepted(_self(), _jobId, _worker);
+    function emitJobOfferAccepted(uint _jobId, address _worker, address _client) public {
+        emit JobOfferAccepted(_self(), _jobId, _worker, _client);
     }
 
-    function emitStartWorkRequested(uint _jobId, uint _at) public {
-        emit StartWorkRequested(_self(), _jobId, _at);
+    function emitStartWorkRequested(uint _jobId, uint _at, address _worker, address _client) public {
+        emit StartWorkRequested(_self(), _jobId, _at, _worker, _client);
     }
 
-    function emitWorkStarted(uint _jobId, uint _at) public {
-        emit WorkStarted(_self(), _jobId, _at);
+    function emitWorkStarted(uint _jobId, uint _at, address _worker, address _client) public {
+        emit WorkStarted(_self(), _jobId, _at, _worker, _client);
     }
 
-    function emitWorkPaused(uint _jobId, uint _at) public {
-        emit WorkPaused(_self(), _jobId, _at);
+    function emitWorkPaused(uint _jobId, uint _at, address _worker, address _client) public {
+        emit WorkPaused(_self(), _jobId, _at, _worker, _client);
     }
 
-    function emitWorkResumed(uint _jobId, uint _at) public {
-        emit WorkResumed(_self(), _jobId, _at);
+    function emitWorkResumed(uint _jobId, uint _at, address _worker, address _client) public {
+        emit WorkResumed(_self(), _jobId, _at, _worker, _client);
     }
 
-    function emitTimeRequestSubmitted(uint _jobId, uint _time) public {
-        emit TimeRequestSubmitted(_self(), _jobId, _time);
+    function emitTimeRequestSubmitted(uint _jobId, uint _time, address _worker, address _client) public {
+        emit TimeRequestSubmitted(_self(), _jobId, _time, _worker, _client);
     }
 
-    function emitTimeRequestAccepted(uint _jobId, uint _time) public {
-        emit TimeRequestAccepted(_self(), _jobId, _time);
+    function emitTimeRequestAccepted(uint _jobId, uint _time, address _worker, address _client) public {
+        emit TimeRequestAccepted(_self(), _jobId, _time, _worker, _client);
     }
 
-    function emitTimeRequestRejected(uint _jobId, uint _time) public {
-        emit TimeRequestRejected(_self(), _jobId, _time);
+    function emitTimeRequestRejected(uint _jobId, uint _time, address _worker, address _client) public {
+        emit TimeRequestRejected(_self(), _jobId, _time, _worker, _client);
     }
 
-    function emitEndWorkRequested(uint _jobId, uint _at) public {
-        emit EndWorkRequested(_self(), _jobId, _at);
+    function emitEndWorkRequested(uint _jobId, uint _at, address _worker, address _client) public {
+        emit EndWorkRequested(_self(), _jobId, _at, _worker, _client);
     }
 
-    function emitWorkAccepted(uint _jobId, uint _at) public {
-        emit WorkAccepted(_self(), _jobId, _at);
+    function emitWorkAccepted(uint _jobId, uint _at, address _worker, address _client) public {
+        emit WorkAccepted(_self(), _jobId, _at, _worker, _client);
     }
 
-    function emitWorkRejected(uint _jobId, uint _at) public {
-        emit WorkRejected(_self(), _jobId, _at);
+    function emitWorkRejected(uint _jobId, uint _at, address _worker, address _client) public {
+        emit WorkRejected(_self(), _jobId, _at, _worker, _client);
     }
 
-    function emitWorkDistputeResolved(uint _jobId, uint _at) public {
-        emit WorkDisputeResolved(_self(), _jobId, _at);
+    function emitWorkDistputeResolved(uint _jobId, uint _at, address _worker, address _client) public {
+        emit WorkDisputeResolved(_self(), _jobId, _at, _worker, _client);
     }
 
-    function emitPaymentReleased(uint _jobId) public {
-        emit PaymentReleased(_self(), _jobId);
+    function emitPaymentReleased(uint _jobId, address _worker, address _client) public {
+        emit PaymentReleased(_self(), _jobId, _worker, _client);
     }
 
-    function emitJobCanceled(uint _jobId) public {
-        emit JobCanceled(_self(), _jobId);
+    function emitJobCanceled(uint _jobId, address _worker, address _client) public {
+        emit JobCanceled(_self(), _jobId, _worker, _client);
     }
 
-    function emitDelegated(uint _jobId, uint at) public {
-        emit Delegated(_self(), _jobId, at);
+    function emitDelegated(uint _jobId, uint at, address _worker, address _client) public {
+        emit Delegated(_self(), _jobId, at, _worker, _client);
     }
 
-    function emitSentForRedo(uint _jobId, uint at) public {
-        emit SentForRedo(_self(), _jobId, at);
+    function emitSentForRedo(uint _jobId, uint at, address _worker, address _client) public {
+        emit SentForRedo(_self(), _jobId, at, _worker, _client);
     }
 
-    function emitPaidDelegated(uint _jobId, uint at) public {
-        emit PaidDelegated(_self(), _jobId, at);
+    function emitPaidDelegated(uint _jobId, uint at, address _worker, address _client) public {
+        emit PaidDelegated(_self(), _jobId, at, _worker, _client);
     }
 
     function _emitErrorCode(uint _errorCode) internal returns (uint) {
