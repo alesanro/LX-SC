@@ -4,7 +4,6 @@ include .env
 
 PUBLISH_BRANCH?=develop
 RELEASE_BRANCH=release
-NEW_RELEASE_VERSION=0.0.11-beta.2
 CURRENT_GIT_BRANCH:=$(shell git symbolic-ref --short HEAD)
 CURRENT_GIT_TAGS:=$(shell git tag -l --points-at HEAD)
 PACKAGE_VERSION:=$(shell node -pe "require('./package.json').version")
@@ -58,6 +57,14 @@ revert_publish_package_json: ## Reverts changes made by 'prepare_publish_package
 	mv package.json package.json-abionly 
 	mv .npmignore .npmignore-abionly
 	git checkout package.json
+
+publish: ## Publishes package to npm registry
+	$(MAKE) prepare_publish_package_json
+	npm publish
+	$(MAKE) complete_publish_package_json
+	git tag "v$(PACKAGE_VERSION)"
+	git push origin --tags
+
 
 release_start: ## Start from this command when ready to release
 	@if [[ "$(CURRENT_GIT_BRANCH)" != "$(PUBLISH_BRANCH)" ]]; then \
