@@ -35,12 +35,12 @@ jspm_packages
 
 # npm pack
 *.tgz
-package*
+package/
 
 # Optional REPL history
 .node_repl_history
 
-# Sensetive keystore 
+# Sensetive keystore
 
 keystore/secrets.json
 
