@@ -142,7 +142,7 @@ contract JobWorkInitiationControllerLib is Roles2LibraryAdapter, JobControllerAb
         store.set(jobOfferOntop, _jobId, msg.sender, _ontop);
         _addJobOffer(_jobId);
 
-        _emitter().emitJobOfferPosted(_jobId, msg.sender, _rate, _estimate, _ontop);
+        _emitter().emitJobOfferPostedTimesBased(_jobId, msg.sender, _rate, _estimate, _ontop);
         return OK;
     }
 
@@ -164,7 +164,7 @@ contract JobWorkInitiationControllerLib is Roles2LibraryAdapter, JobControllerAb
         store.set(jobOfferRate, _jobId, msg.sender, _price);
         _addJobOffer(_jobId);
 
-        _emitter().emitJobOfferPosted(_jobId, msg.sender, _price);
+        _emitter().emitJobOfferPostedFixedPrice(_jobId, msg.sender, _price);
 
         return OK;
     }
