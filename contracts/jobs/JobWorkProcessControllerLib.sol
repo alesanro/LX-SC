@@ -35,7 +35,7 @@ contract JobWorkProcessControllerLib is Roles2LibraryAdapter, JobControllerAbstr
         store.set(jobPendingStartAt, _jobId, now);
         store.set(jobState, _jobId, JOB_STATE_PENDING_START);
 
-        _emitter().emitStartWorkRequested(_jobId, now);
+        _emitter().emitStartWorkRequested(_jobId, now, msg.sender, store.get(jobClient, _jobId));
         return OK;
     }
 
@@ -51,7 +51,7 @@ contract JobWorkProcessControllerLib is Roles2LibraryAdapter, JobControllerAbstr
         store.set(jobState, _jobId, JOB_STATE_STARTED);
         store.set(jobStartTime, _jobId, now);
 
-        _emitter().emitWorkStarted(_jobId, now);
+        _emitter().emitWorkStarted(_jobId, now, store.get(jobWorker, _jobId), msg.sender);
         return OK;
     }
 
@@ -77,7 +77,7 @@ contract JobWorkProcessControllerLib is Roles2LibraryAdapter, JobControllerAbstr
         store.set(jobPaused, _jobId, true);
         store.set(jobPausedAt, _jobId, now);
 
-        _emitter().emitWorkPaused(_jobId, now);
+        _emitter().emitWorkPaused(_jobId, now, store.get(jobWorker, _jobId), store.get(jobClient, _jobId));
         return OK;
     }
 
@@ -106,7 +106,7 @@ contract JobWorkProcessControllerLib is Roles2LibraryAdapter, JobControllerAbstr
         store.set(jobPaused, _jobId, false);
         store.set(jobPausedFor, _jobId, store.get(jobPausedFor, _jobId) + (now - store.get(jobPausedAt, _jobId)));
 
-        _emitter().emitWorkResumed(_jobId, now);
+        _emitter().emitWorkResumed(_jobId, now, store.get(jobWorker, _jobId), store.get(jobClient, _jobId));
         return OK;
     }
 
@@ -124,7 +124,7 @@ contract JobWorkProcessControllerLib is Roles2LibraryAdapter, JobControllerAbstr
 
         store.set(jobRequestedAdditionalTime, _jobId, uint(_additionalTime));
 
-        _emitter().emitTimeRequestSubmitted(_jobId, _additionalTime);
+        _emitter().emitTimeRequestSubmitted(_jobId, _additionalTime, msg.sender, store.get(jobClient, _jobId));
         return OK;
     }
 
@@ -141,8 +141,7 @@ contract JobWorkProcessControllerLib is Roles2LibraryAdapter, JobControllerAbstr
     returns (uint)
     {
         // ensure that no raised condition were met and client knows exactly how much time is actually requested
-        uint16 _storedAdditionalTime = uint16(store.get(jobRequestedAdditionalTime, _jobId));
-        if (_storedAdditionalTime != _additionalTime) {
+        if (uint16(store.get(jobRequestedAdditionalTime, _jobId)) != _additionalTime) {
             return _emitErrorCode(JOB_CONTROLLER_INCORRECT_TIME_PROVIDED);
         }
 
@@ -152,7 +151,7 @@ contract JobWorkProcessControllerLib is Roles2LibraryAdapter, JobControllerAbstr
 
         store.set(jobRequestedAdditionalTime, _jobId, 0);
 
-        _emitter().emitTimeRequestAccepted(_jobId, _additionalTime);
+        _emitter().emitTimeRequestAccepted(_jobId, _additionalTime, store.get(jobWorker, _jobId), msg.sender);
         return OK;
     }
 
@@ -169,7 +168,7 @@ contract JobWorkProcessControllerLib is Roles2LibraryAdapter, JobControllerAbstr
         uint _additionalTime = store.get(jobRequestedAdditionalTime, _jobId);
         store.set(jobRequestedAdditionalTime, _jobId, 0);
 
-        _emitter().emitTimeRequestRejected(_jobId, _additionalTime);
+        _emitter().emitTimeRequestRejected(_jobId, _additionalTime, store.get(jobWorker, _jobId), msg.sender);
         return OK;
     }
 
@@ -205,7 +204,7 @@ contract JobWorkProcessControllerLib is Roles2LibraryAdapter, JobControllerAbstr
         store.set(jobPendingFinishAt, _jobId, now);
         store.set(jobState, _jobId, JOB_STATE_PENDING_FINISH);
 
-        _emitter().emitEndWorkRequested(_jobId, now);
+        _emitter().emitEndWorkRequested(_jobId, now, msg.sender, store.get(jobClient, _jobId));
         return OK;
     }
 }

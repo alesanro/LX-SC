@@ -300,6 +300,7 @@ contract("JobController workflows", accounts => {
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
 				assert.equal(log.worker, worker);
+				assert.equal(log.client, client);
 				assert.equal('0x' + log.rate.toString(16), workerRate);
 				assert.equal(log.estimate.toString(), jobEstimate);
 				assert.equal('0x' + log.ontop.toString(16), workerOnTop);
@@ -319,6 +320,7 @@ contract("JobController workflows", accounts => {
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
 				assert.equal(log.worker, worker);
+				assert.equal(log.client, client);
 				assert.equal('0x' + log.price.toString(16), workerRate);
 				assert.isUndefined(log.estimate);
 				assert.isUndefined(log.ontop);
@@ -339,6 +341,7 @@ contract("JobController workflows", accounts => {
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
 				assert.equal(log.worker, worker);
+				assert.equal(log.client, client);
 			})
 		}
 
@@ -362,6 +365,8 @@ contract("JobController workflows", accounts => {
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
+				assert.equal(log.worker, worker);
+				assert.equal(log.client, client);
 			})
 		}
 
@@ -377,6 +382,8 @@ contract("JobController workflows", accounts => {
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
+				assert.equal(log.worker, worker);
+				assert.equal(log.client, client);
 			})
 		}
 
@@ -392,6 +399,8 @@ contract("JobController workflows", accounts => {
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
+				assert.equal(log.worker, worker);
+				assert.equal(log.client, client);
 			})
 		}
 
@@ -409,6 +418,8 @@ contract("JobController workflows", accounts => {
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
 				assert.equal(log.time.toString(), additionalTime.toString());
+				assert.equal(log.worker, worker);
+				assert.equal(log.client, client);
 			})
 		}
 
@@ -427,6 +438,8 @@ contract("JobController workflows", accounts => {
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
 				assert.equal(log.time.toString(), additionalTime.toString());
+				assert.equal(log.worker, worker);
+				assert.equal(log.client, client);
 			})
 		}
 
@@ -444,6 +457,8 @@ contract("JobController workflows", accounts => {
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
 				assert.equal(log.time.toString(), additionalTime.toString());
+				assert.equal(log.worker, worker);
+				assert.equal(log.client, client);
 			})
 		}
 
@@ -451,7 +466,11 @@ contract("JobController workflows", accounts => {
 			it("should emit 'EndWorkRequested' event on requesting end of work by a worker", async () => {
 				const tx = await contracts.jobController.endWork(jobId, { from: worker, })
 				const events = eventsHelper.extractEvents(tx, "EndWorkRequested")
-				assert.equal(events.length, 1)
+				assert.equal(events.length, 1);
+
+				const log = events[0].args;
+				assert.equal(log.worker, worker);
+				assert.equal(log.client, client);
 			})
 		}
 
@@ -467,6 +486,8 @@ contract("JobController workflows", accounts => {
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
+				assert.equal(log.worker, worker);
+				assert.equal(log.client, client);
 			})
 		}
 
@@ -482,6 +503,8 @@ contract("JobController workflows", accounts => {
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
+				assert.equal(log.worker, worker);
+				assert.equal(log.client, client);
 			})
 		}
 
@@ -497,6 +520,8 @@ contract("JobController workflows", accounts => {
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
+				assert.equal(log.worker, worker);
+				assert.equal(log.client, client);
 			})
 		}
 
@@ -512,6 +537,8 @@ contract("JobController workflows", accounts => {
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
+				assert.equal(log.worker, worker);
+				assert.equal(log.client, client);
 			})
 		}
 
@@ -527,6 +554,8 @@ contract("JobController workflows", accounts => {
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
+				assert.equal(log.worker, worker);
+				assert.equal(log.client, client);
 			})
 		}
 
@@ -542,6 +571,8 @@ contract("JobController workflows", accounts => {
 				const log = events[0].args;
 				assert.equal(log.self, contracts.jobController.address);
 				assert.equal(log.jobId.toString(), jobId);
+				assert.equal(log.worker, worker);
+				assert.equal(log.client, client);
 			})
 		}
 	}

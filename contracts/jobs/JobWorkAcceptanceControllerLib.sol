@@ -53,7 +53,7 @@ contract JobWorkAcceptanceControllerLib is Roles2LibraryAdapter, JobControllerAb
         store.set(jobFinalizedAt, _jobId, _getJobState(_jobId));
         store.set(jobState, _jobId, JOB_STATE_FINALIZED);
 
-        _emitter().emitJobCanceled(_jobId);
+        _emitter().emitJobCanceled(_jobId, worker, store.get(jobClient, _jobId));
         return OK;
     }
 
@@ -61,12 +61,12 @@ contract JobWorkAcceptanceControllerLib is Roles2LibraryAdapter, JobControllerAb
     public
     onlyClient(_jobId)
     onlyJobStates(_jobId, JOB_STATE_PENDING_FINISH | JOB_STATE_WORK_REJECTED)
-    returns (uint) 
+    returns (uint)
     {
         store.set(jobFinishTime, _jobId, now);
         store.set(jobState, _jobId, JOB_STATE_WORK_ACCEPTED);
 
-        _emitter().emitWorkAccepted(_jobId, now);
+        _emitter().emitWorkAccepted(_jobId, now, store.get(jobWorker, _jobId), msg.sender);
         return OK;
     }
 
@@ -74,12 +74,12 @@ contract JobWorkAcceptanceControllerLib is Roles2LibraryAdapter, JobControllerAb
     external
     onlyClient(_jobId)
     onlyJobState(_jobId, JOB_STATE_PENDING_FINISH)
-    returns (uint _resultCode) 
+    returns (uint _resultCode)
     {
         store.set(jobFinishTime, _jobId, now);
         store.set(jobState, _jobId, JOB_STATE_WORK_REJECTED);
 
-        _emitter().emitWorkRejected(_jobId, now);
+        _emitter().emitWorkRejected(_jobId, now, store.get(jobWorker, _jobId), msg.sender);
         return OK;
     }
 
@@ -94,7 +94,7 @@ contract JobWorkAcceptanceControllerLib is Roles2LibraryAdapter, JobControllerAb
     returns (uint _resultCode) {
         _resultCode = _releaseSplittedPayment(_jobId, _workerPaycheck, _penaltyFee);
         if (_resultCode == OK) {
-            _emitter().emitWorkDistputeResolved(_jobId, now);
+            _emitter().emitWorkDistputeResolved(_jobId, now, store.get(jobWorker, _jobId), store.get(jobClient, _jobId));
             return OK;
         } else {
             return _emitErrorCode(_resultCode);
@@ -126,7 +126,7 @@ contract JobWorkAcceptanceControllerLib is Roles2LibraryAdapter, JobControllerAb
         store.set(jobFinalizedAt, _jobId, _getJobState(_jobId));
         store.set(jobState, _jobId, JOB_STATE_FINALIZED);
 
-        _emitter().emitPaymentReleased(_jobId);
+        _emitter().emitPaymentReleased(_jobId, worker, store.get(jobClient, _jobId));
         return OK;
     }
 
@@ -151,7 +151,7 @@ contract JobWorkAcceptanceControllerLib is Roles2LibraryAdapter, JobControllerAb
     returns (uint _resultCode)
     {
         store.set(jobState, _jobId, JOB_STATE_DELEGATED);
-        _emitter().emitDelegated(_jobId, now);
+        _emitter().emitDelegated(_jobId, now, store.get(jobWorker, _jobId), msg.sender);
     }
 
     function _sendForRedo(
@@ -161,7 +161,7 @@ contract JobWorkAcceptanceControllerLib is Roles2LibraryAdapter, JobControllerAb
     returns (uint _resultCode)
     {
         store.set(jobState, _jobId, JOB_STATE_STARTED);
-        _emitter().emitSentForRedo(_jobId, now);
+        _emitter().emitSentForRedo(_jobId, now, store.get(jobWorker, _jobId), store.get(jobClient, _jobId));
         return OK;
     }
 
@@ -208,7 +208,7 @@ contract JobWorkAcceptanceControllerLib is Roles2LibraryAdapter, JobControllerAb
     returns (uint _resultCode) {
         _resultCode = _releaseSplittedPayment(_jobId, _workerPaycheck, _penaltyFee);
         if (_resultCode == OK) {
-            _emitter().emitPaidDelegated(_jobId, now);
+            _emitter().emitPaidDelegated(_jobId, now, store.get(jobWorker, _jobId), store.get(jobClient, _jobId));
             return OK;
         } else {
             return _emitErrorCode(_resultCode);
