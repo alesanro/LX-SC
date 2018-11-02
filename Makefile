@@ -61,7 +61,7 @@ revert_publish_package_json: ## Reverts changes made by 'prepare_publish_package
 publish: ## Publishes package to npm registry
 	$(MAKE) prepare_publish_package_json
 	npm publish
-	$(MAKE) complete_publish_package_json
+	$(MAKE) revert_publish_package_json
 	git tag "v$(PACKAGE_VERSION)"
 	git push origin --tags
 
