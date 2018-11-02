@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.0.12-beta.3"></a>
+## [0.0.12-beta.3](https://github.com/ChronoBank/LX-SC/compare/v0.0.12-beta.2...v0.0.12-beta.3) (2018-11-02)
+
+
+### Bug Fixes
+
+* **jobs:** LABX-913 use different event naming (instead of **JobOfferPosted** use **JobOfferPostedTimesBased** and **JobOfferPostedFixedPrice** ([06f7344](https://github.com/ChronoBank/LX-SC/commit/06f7344))
+
+
+### Features
+
+* **jobs:** LABX-914 add client's and worker's addresses to JobController events ([59db144](https://github.com/ChronoBank/LX-SC/commit/59db144))
+
+
+
 <a name="0.0.11-alpha.1"></a>
 ## 0.0.11-alpha.1 (2018-10-31)
 
