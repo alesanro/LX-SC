@@ -1148,6 +1148,21 @@ contract('JobController', function(accounts) {
           jobId, workerRate, jobEstimate, workerOnTop, {from: worker}
         ))
         .then(async () => {
+          assert.equal(
+            (await jobsDataProvider.getWorkerOffersCount.call(worker)).toString(16),
+            "1".toString(16),
+            "Worker should have only one offer"
+          )
+
+          const [ offerJobIds, offerRates, offerEstimates, offerOnTops, offerPostedAt, ] = await jobsDataProvider.getWorkerOffers.call(worker, 0, 1);
+          assert.lengthOf(offerJobIds, 1, "Worker should have only one id in returned offers")
+          assert.equal(offerJobIds[0].toString(16), jobId.toString(16), "Got job id should be equal to expected one")
+          assert.equal(offerRates[0].toString(16), workerRate.toString(16), "Got rate should be equal to expected one")
+          assert.equal(offerEstimates[0].toString(16), jobEstimate.toString(16), "Got estimate should be equal to expected one")
+          assert.equal(offerOnTops[0].toString(16), workerOnTop.toString(16), "Got onTop should be equal to expected one")
+          assert.notEqual(offerPostedAt[0].toString(16), "0", "Got offer posted at should not be equal to 0")
+        })
+        .then(async () => {
           const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
           return await jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
         })
@@ -2215,6 +2230,7 @@ contract('JobController', function(accounts) {
 
     it("should have presetup values", async () => {
       assert.equal((await jobsDataProvider.getJobsCount.call()).toNumber(), 3)
+      assert.equal((await jobsDataProvider.getWorkerOffersCount.call(worker)).toString(16), "2".toString(16))
 
       assert.lengthOf(
         (await jobsDataProvider.getJobs.call(
@@ -2283,6 +2299,16 @@ contract('JobController', function(accounts) {
 
       assert.isFalse(await jobsDataProvider.isActivatedState(1, await jobsDataProvider.getJobState(1)))
       assert.isTrue(await jobsDataProvider.isActivatedState(3, await jobsDataProvider.getJobState(3)))
+
+      const workerOffers = await jobsDataProvider.getWorkerOffers.call(worker, 0, 4)
+      const [ offersJobIds, offersRate, offersEstimate, offersOnTop, offersPostedAt, ] = workerOffers
+      assert.lengthOf(offersJobIds, 2)
+      assert.equal(offersJobIds.length, offersRate.length)
+      assert.equal(offersJobIds.length, offersEstimate.length)
+      assert.equal(offersJobIds.length, offersOnTop.length)
+      assert.equal(offersJobIds.length, offersPostedAt.length)
+      assert.include(offersJobIds.map(v => v.toString(16)), "1");
+      assert.include(offersJobIds.map(v => v.toString(16)), "3");
 
       // check `_timeRequested` parameter
       {

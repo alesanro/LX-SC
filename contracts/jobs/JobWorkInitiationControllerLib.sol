@@ -67,6 +67,7 @@ contract JobWorkInitiationControllerLib is Roles2LibraryAdapter, JobControllerAb
         if (result != OK) {
             return _emitErrorCode(result);
         }
+        
         store.set(bindStatus, jobId, true);
         store.set(jobsCount, jobId);
         store.set(jobCreatedAt, jobId, now);
@@ -79,6 +80,7 @@ contract JobWorkInitiationControllerLib is Roles2LibraryAdapter, JobControllerAb
         store.set(jobDefaultPay, jobId, _defaultPay);
         store.set(jobDetailsIPFSHash, jobId, _detailsIPFSHash);
         store.set(detailsIPFSHashToJobStorage, _detailsIPFSHash, jobId);
+
         store.add(clientJobs, bytes32(msg.sender), jobId);
         _emitter().emitJobPosted(jobId, _flowType, msg.sender, _area, _category, _skills, _defaultPay, _detailsIPFSHash, true);
         return OK;
