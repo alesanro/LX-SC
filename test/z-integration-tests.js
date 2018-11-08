@@ -16,6 +16,7 @@ const Reverter = require('./helpers/reverter')
 const eventsHelper = require('./helpers/eventsHelper')
 const helpers = require('./helpers/helpers')
 const ErrorsScope = require("../common/errors")
+const { getRandomBytes32 } = helpers
 
 contract('Integration tests (user stories)', (accounts) => {
 
@@ -73,7 +74,7 @@ contract('Integration tests (user stories)', (accounts) => {
             category: 4,
             skills: 4,
             defaultPay: 90,
-            details: '0x00bb00bb00bb00bb00bb'
+            details: getRandomBytes32()
         },
         {
             id: null,
@@ -82,7 +83,7 @@ contract('Integration tests (user stories)', (accounts) => {
             category: 4,
             skills: 8,
             defaultPay: 90,
-            details: '0x00aa00aa00aa00aa00aa'
+            details: getRandomBytes32()
         },
         {
             id: null,
@@ -91,7 +92,7 @@ contract('Integration tests (user stories)', (accounts) => {
             category:4,
             skills: 4,
             defaultPay: 90,
-            details: '0x00ee00ee00ee00ee00ee'
+            details: getRandomBytes32()
         },
         {
             id: null,
@@ -100,7 +101,7 @@ contract('Integration tests (user stories)', (accounts) => {
             category: 16,
             skills: 32,
             defaultPay: 90,
-            details: '0x00ff00ff00ff00ff00ff'
+            details: getRandomBytes32()
         },
         {
             id: null,
@@ -109,7 +110,7 @@ contract('Integration tests (user stories)', (accounts) => {
             category: 16,
             skills: 4,
             defaultPay: 90,
-            details: '0x00fe00fe00fe00fe00fe'
+            details: getRandomBytes32()
         },
         {
             id: null,
@@ -118,7 +119,7 @@ contract('Integration tests (user stories)', (accounts) => {
             category: 4,
             skills: 4,
             defaultPay: 90,
-            details: '0x00fe00fe00fe00fe00fe'
+            details: getRandomBytes32()
         },
     ]
 

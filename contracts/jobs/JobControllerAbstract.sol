@@ -182,6 +182,7 @@ contract JobControllerCore {
     uint constant JOB_CONTROLLER_INVALID_WORKER_PAYCHECK_VALUE = JOB_CONTROLLER_SCOPE + 11;
     uint constant JOB_CONTROLLER_INVALID_BOARD = JOB_CONTROLLER_SCOPE + 12;
     uint constant JOB_CONTROLLER_ONLY_BOARD_OWNER = JOB_CONTROLLER_SCOPE + 13;
+    uint constant JOB_CONTROLLER_JOB_DETAILS_IPFS_EXISTS = JOB_CONTROLLER_SCOPE + 14;
 
     PaymentProcessorInterface public paymentProcessor;
     UserLibraryInterface public userLibrary;
@@ -326,6 +327,17 @@ contract JobControllerAbstract is JobControllerEmitter, JobDataCore, JobControll
             _emitErrorCode(JOB_CONTROLLER_INVALID_STATE);
             assembly {
                 mstore(0, 13003) // JOB_CONTROLLER_INVALID_STATE
+                return(0, 32)
+            }
+        }
+        _;
+    }
+
+    modifier onlyNotRegisteredJobDetailsIPFSHash(bytes32 _ipfsHash) {
+        if (!(_ipfsHash != bytes32(0) && store.get(detailsIPFSHashToJobStorage, _ipfsHash) == 0)) {
+            _emitErrorCode(JOB_CONTROLLER_JOB_DETAILS_IPFS_EXISTS);
+            assembly {
+                mstore(0, 13014) // JOB_CONTROLLER_JOB_DETAILS_IPFS_EXISTS
                 return(0, 32)
             }
         }

@@ -19,6 +19,7 @@ const eventsHelper = require('./helpers/eventsHelper');
 
 const helpers = require('./helpers/helpers');
 const ErrorsNamespace = require('../common/errors')
+const { getRandomBytes32 } = helpers;
 
 
 contract("JobController workflows", accounts => {
@@ -65,7 +66,6 @@ contract("JobController workflows", accounts => {
 	}
 
 	const jobDefaultPaySize = 90;
-	const jobDetailsIPFSHash = "hash of job's data"
 
 	const assertInternalBalance = async (address, expectedValue) => {
 		asserts.equal(expectedValue)(await contracts.paymentGateway.getBalance(address))
@@ -116,7 +116,7 @@ contract("JobController workflows", accounts => {
 			// Represents full chain of interactions between client and worker
 			// Provided `operation` will try to execute on each stage, comparing with expected results
 
-			.then(() => contracts.jobController.postJob(Workflow.TM_WITHOUT_CONFIRMATION, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, }))
+			.then(() => contracts.jobController.postJob(Workflow.TM_WITHOUT_CONFIRMATION, jobArea, jobCategory, jobSkills, jobDefaultPaySize, getRandomBytes32(), { from: client, }))
 			.then(() => operation.call(...args))
 			.then(result => assert.equal(result.toNumber(), stages.CREATED))
 
@@ -174,7 +174,7 @@ contract("JobController workflows", accounts => {
 		// Represents full chain of interactions between client and worker
 		// Provided `operation` will try to execute on each stage, comparing with expected results
 
-		await contracts.jobController.postJob(Workflow.FIXED_PRICE, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+		await contracts.jobController.postJob(Workflow.FIXED_PRICE, jobArea, jobCategory, jobSkills, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 		assert.equal((await operation.call(...args)).toNumber(), stages.CREATED)
 
 		await contracts.jobController.postJobOfferWithPrice(jobId, workerRate, { from: worker, })
@@ -227,7 +227,7 @@ contract("JobController workflows", accounts => {
 		clientBalanceBefore = await contracts.paymentGateway.getBalance(client)
 		workerBalanceBefore = await contracts.paymentGateway.getBalance(worker)
 
-		await contracts.jobController.postJob(Workflow.TM_WITHOUT_CONFIRMATION, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+		await contracts.jobController.postJob(Workflow.TM_WITHOUT_CONFIRMATION, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 		await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
 		const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 		await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
@@ -266,6 +266,7 @@ contract("JobController workflows", accounts => {
 
 		this._testJobPosted = () => {
 			it("should emit 'JobPosted' event on posting a job", async () => {
+        const jobDetailsIPFSHash = getRandomBytes32()
 				const tx = await contracts.jobController.postJob(jobFlow, skillsArea, skillsCategory, skills, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
 
 				const events = eventsHelper.extractEvents(tx, "JobPosted")
@@ -608,23 +609,23 @@ contract("JobController workflows", accounts => {
         afterEach(async () => await reverter.revert());
 
         it('should allow anyone to post a job with FIXED_PRICE flow type', async () => {
-        	const result = await contracts.jobController.postJob.call(Workflow.FIXED_PRICE, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: accounts[0], });
+        	const result = await contracts.jobController.postJob.call(Workflow.FIXED_PRICE, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: accounts[0], });
             assert.equal(result.toNumber(), ErrorsNamespace.OK);
         });
 
         it('should allow anyone to post a job with TM_WITH_CONFIRMATION flow type', async () => {
-            const result = await contracts.jobController.postJob.call(Workflow.TM_WITH_CONFIRMATION, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: accounts[0], });
+            const result = await contracts.jobController.postJob.call(Workflow.TM_WITH_CONFIRMATION, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: accounts[0], });
 			assert.equal(result.toNumber(), ErrorsNamespace.OK);
 		});
 
         it('should allow anyone to post a job with TM_WITHOUT_CONFIRMATION flow type', async () => {
-            const result = await contracts.jobController.postJob.call(Workflow.TM_WITHOUT_CONFIRMATION, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: accounts[0], });
+            const result = await contracts.jobController.postJob.call(Workflow.TM_WITHOUT_CONFIRMATION, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: accounts[0], });
 			assert.equal(result.toNumber(), ErrorsNamespace.OK);
 		});
 
         it('should throw JOB_CONTROLLER_INVALID_WORKFLOW_TYPE error code if flow type is incorrect', async () => {
         	const flowType = 777
-            const result = await contracts.jobController.postJob.call(flowType, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: accounts[0], });
+            const result = await contracts.jobController.postJob.call(flowType, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: accounts[0], });
             assert.equal(result.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_WORKFLOW_TYPE);
         });
 
@@ -641,7 +642,7 @@ contract("JobController workflows", accounts => {
 			it('should allow anyone to post a job', async () => {
 				for (const account of accounts) {
 					assert.equal(
-						(await contracts.jobController.postJob.call(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: account, })).toNumber(),
+						(await contracts.jobController.postJob.call(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: account, })).toNumber(),
 						ErrorsNamespace.OK
 					)
 				}
@@ -652,10 +653,11 @@ contract("JobController workflows", accounts => {
 				const area = 1
 				const category = 4
 				const skills = 2
-				const args = [ jobFlow, area, category, skills, jobDefaultPaySize, jobDetailsIPFSHash, ]
+				const args = [ jobFlow, area, category, skills, jobDefaultPaySize, ]
 
 				for (const c of clients) {
-					const tx = await contracts.jobController.postJob(...args, { from: c, })
+          const modifiedArgs = [...args, getRandomBytes32()]
+					const tx = await contracts.jobController.postJob(...modifiedArgs, { from: c, })
 					helpers.assertLogs([{
 						event: "JobPosted",
 						args: {
@@ -671,7 +673,7 @@ contract("JobController workflows", accounts => {
 			const jobId = 1;
 
 			beforeEach(async () => {
-				await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+				await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 			})
 
 			afterEach(async () => await reverter.revert())
@@ -735,7 +737,7 @@ contract("JobController workflows", accounts => {
 				const jobId = 1;
 
 				beforeEach(async () => {
-					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 				})
 
 				it('should NOT accept job offer for non-existent job worker', async () => {
@@ -770,7 +772,7 @@ contract("JobController workflows", accounts => {
 				const jobId = 1
 
 				it('should allow to accept job offer if payment lock was allowed by Payment Processor', async () => {
-					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 					await contracts.jobController.postJobOffer(jobId, '0x12f2a36ecd555', 1, '0x12f2a36ecd555', { from: worker, })
 					await contracts.paymentProcessor.enableServiceMode()
 					await contracts.paymentProcessor.approve(jobId)
@@ -793,7 +795,7 @@ contract("JobController workflows", accounts => {
 					let clientBalanceBefore = await contracts.paymentGateway.getBalance(client)
 					let workerBalanceBefore = await contracts.paymentGateway.getBalance(worker)
 
-					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 					await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
 
 					const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
@@ -813,7 +815,7 @@ contract("JobController workflows", accounts => {
 				const jobArea = 4;
 				const jobCategory = 4;
 				const jobSkills = 4;
-				const jobDetails = jobDetailsIPFSHash;
+				const jobDetails = getRandomBytes32();
 				const additionalTime = 60;
 				const workerRate = '0x470de4df81ffec';
 				const workerOnTop = '0x12f2a36ecd555';
@@ -1109,7 +1111,7 @@ contract("JobController workflows", accounts => {
 				const jobArea = 4;
 				const jobCategory = 4;
 				const jobSkills = 4;
-				const jobDetails = jobDetailsIPFSHash;
+				const jobDetails = getRandomBytes32();
 
 				const workerRate = '0x470de4df81ffec';
 				const workerOnTop = '0x12f2a36ecd555';
@@ -1165,7 +1167,7 @@ contract("JobController workflows", accounts => {
 			const additionalTime = 60
 
 			beforeEach(async () => {
-				await contracts.jobController.postJob(jobFlow, 4, 4, 7, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+				await contracts.jobController.postJob(jobFlow, 4, 4, 7, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 				await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
 				const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 				await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
@@ -1347,7 +1349,7 @@ contract("JobController workflows", accounts => {
 			describe("when cancelling job should use payment processor and", () => {
 				before(async () => {
 
-					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 					await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
 
 					payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
@@ -1400,7 +1402,7 @@ contract("JobController workflows", accounts => {
 				var payment
 
 				beforeEach(async () => {
-					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 					await contracts.jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, { from: worker, })
 
 					payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
@@ -1574,7 +1576,7 @@ contract("JobController workflows", accounts => {
 			it('should allow anyone to post a job', async () => {
 				for (const account of accounts) {
 					assert.equal(
-						(await contracts.jobController.postJob.call(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: account, })).toNumber(),
+						(await contracts.jobController.postJob.call(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: account, })).toNumber(),
 						ErrorsNamespace.OK
 					)
 				}
@@ -1585,10 +1587,11 @@ contract("JobController workflows", accounts => {
 				const area = 1
 				const category = 4
 				const skills = 2
-				const args = [ jobFlow, area, category, skills, jobDefaultPaySize, jobDetailsIPFSHash, ]
+				const args = [ jobFlow, area, category, skills, jobDefaultPaySize, ]
 
 				for (const c of clients) {
-					const tx = await contracts.jobController.postJob(...args, { from: c, })
+          const modifiedArgs = [...args, getRandomBytes32(), ]
+					const tx = await contracts.jobController.postJob(...modifiedArgs, { from: c, })
 					helpers.assertLogs([{
 						event: "JobPosted",
 						args: {
@@ -1605,7 +1608,7 @@ contract("JobController workflows", accounts => {
 			const jobId = 1;
 
 			before(async () => {
-				await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+				await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 			})
 
 			after(async () => await reverter.revert())
@@ -1650,7 +1653,7 @@ contract("JobController workflows", accounts => {
 				const jobId = 1;
 
 				beforeEach(async () => {
-					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 				})
 
 				afterEach(async () => await reverter.revert())
@@ -1688,7 +1691,7 @@ contract("JobController workflows", accounts => {
 				afterEach(async () => await reverter.revert())
 
 				it('should allow to accept job offer if payment lock was allowed by Payment Processor', async () => {
-					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 					await contracts.jobController.postJobOfferWithPrice(jobId, '0x12f2a36ecd555', { from: worker, })
 					await contracts.paymentProcessor.enableServiceMode()
 					await contracts.paymentProcessor.approve(jobId)
@@ -1705,7 +1708,7 @@ contract("JobController workflows", accounts => {
 					let clientBalanceBefore = await contracts.paymentGateway.getBalance(client)
 					let workerBalanceBefore = await contracts.paymentGateway.getBalance(worker)
 
-					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 					await contracts.jobController.postJobOfferWithPrice(jobId, price, { from: worker, })
 
 					const payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
@@ -1728,7 +1731,7 @@ contract("JobController workflows", accounts => {
 				const workerRate = '0x470de4df81ffec';
 
 				before(async () => {
-					await contracts.jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+					await contracts.jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 					await contracts.jobController.postJobOfferWithPrice(jobId, workerRate, { from: worker, })
 				})
 
@@ -2064,7 +2067,7 @@ contract("JobController workflows", accounts => {
 			describe("when accepting work after finish", () => {
 
 				before(async () => {
-					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 					await contracts.jobController.postJobOfferWithPrice(jobId, workerRate, { from: worker, })
 					payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
@@ -2119,7 +2122,7 @@ contract("JobController workflows", accounts => {
 			describe("when rejecting work after finish", () => {
 
 				before(async () => {
-					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 					await contracts.jobController.postJobOfferWithPrice(jobId, workerRate, { from: worker, })
 					payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
@@ -2156,7 +2159,7 @@ contract("JobController workflows", accounts => {
 			describe("when rejecting work and resolving by referee", () => {
 
 				beforeEach(async () => {
-					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
+					await contracts.jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client, })
 					await contracts.jobController.postJobOfferWithPrice(jobId, workerRate, { from: worker, })
 					payment = await contracts.jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
 					await contracts.jobController.acceptOffer(jobId, worker, { from: client, value: payment, })
