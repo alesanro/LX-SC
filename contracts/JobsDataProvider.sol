@@ -268,6 +268,57 @@ contract JobsDataProvider is JobDataCore {
         }
     }
 
+    /// @notice Gets amount of offers the worker `_worker` posted. Do not include offers that were accepted by clients.
+    /// @param _worker worker address.
+    /// @return number of job offers posted.
+    function getWorkerOffersCount(address _worker) public view returns (uint) {
+        return store.count(workerJobs, bytes32(_worker));
+    }
+
+    /// @notice Gets information about worker's `_worker` offers has been made.
+    /// @dev Provide fromIdx `_fromIdx` and maxLength `_maxLen` to restrict the number of 
+    ///     returned values.
+    /// @param _worker worker address.
+    /// @param _fromIdx index to start from. Max index (amount of records could be fetched from 'getWorkerOffersCount(worker)' function).
+    /// @param _maxLen maximum amount of records to return.
+    /// @return {
+    ///     "_jobIds": "identifiers of jobs to which offer was made",
+    ///     "_offerRates": "rates for selected offers",
+    ///     "_offerEstimates": "time estimates for selected offers",
+    ///     "_offerOnTops": "pay on tops for selected offers",
+    ///     "_offerPostedAt": "postedAt time for selected offers"
+    /// }
+    function getWorkerOffers(address _worker, uint _fromIdx, uint _maxLen) public view returns (
+        uint[] _jobIds,
+        uint[] _offerRates,
+        uint[] _offerEstimates,
+        uint[] _offerOnTops,
+        uint[] _offerPostedAt
+    ) {
+        uint _offersCount = getWorkerOffersCount(_worker);
+        if (_fromIdx > _offersCount) {
+            return;
+        }
+
+        _maxLen = (_fromIdx + _maxLen <= _offersCount) ? _maxLen : (_offersCount - _fromIdx);
+
+        _jobIds = new uint[](_maxLen);
+        _offerRates = new uint[](_maxLen);
+        _offerEstimates = new uint[](_maxLen);
+        _offerOnTops = new uint[](_maxLen);
+        _offerPostedAt = new uint[](_maxLen);
+        uint _pointer = 0;
+
+        for (uint _offerIdx = _fromIdx; _offerIdx < _fromIdx + _maxLen; ++_offerIdx) {
+            _jobIds[_pointer] = store.get(workerJobs, bytes32(_worker), _offerIdx);
+            _offerRates[_pointer] = store.get(jobOfferRate, _jobIds[_pointer], _worker);
+            _offerEstimates[_pointer] = store.get(jobOfferEstimate, _jobIds[_pointer], _worker);
+            _offerOnTops[_pointer] = store.get(jobOfferOntop, _jobIds[_pointer], _worker);
+            _offerPostedAt[_pointer] = store.get(jobOfferPostedAt, _jobIds[_pointer], _worker);
+            _pointer += 1;
+        }
+    }
+
     function getJobClient(uint _jobId) public view returns (address) {
         return store.get(jobClient, _jobId);
     }
