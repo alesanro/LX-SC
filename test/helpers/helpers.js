@@ -4,6 +4,7 @@ const Asserts = require('./asserts');
 const Roles2LibraryInterface = artifacts.require('./Roles2LibraryInterface.sol');
 const roles2LibraryInterface = web3.eth.contract(Roles2LibraryInterface.abi).at('0x0');
 const asserts = Asserts(assert);
+const { randomBytes } = require('crypto');
 
 Array.prototype.unique = function() {
   return this.filter(function (value, index, self) {
@@ -19,6 +20,9 @@ Array.prototype.removeZeros = function() {
 
 
 const helpers = {
+  getRandomBytes32: () => {
+   return `0x${randomBytes(32).toString("hex")}`
+  },
   getSig: (callData) => web3.sha3(callData).slice(0, 10),
   increaseTime: (time) => {
     return new Promise((resolve, reject) => {

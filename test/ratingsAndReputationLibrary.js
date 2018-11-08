@@ -21,6 +21,7 @@ const Reverter = require('./helpers/reverter');
 const eventsHelper = require('./helpers/eventsHelper');
 const helpers = require('./helpers/helpers')
 const ErrorsNamespace = require('../common/errors')
+const { getRandomBytes32 } = helpers;
 
 contract('RatingsAndReputationLibrary', function(accounts) {
   const reverter = new Reverter(web3);
@@ -88,7 +89,7 @@ contract('RatingsAndReputationLibrary', function(accounts) {
     .then(() => userFactory.createUserWithProxyAndRecovery(_worker, use2FA))
     // .then(() => userLibrary.setMany(_worker, jobArea, [jobCategory], [jobSkills], { from: accounts[0], }))
     .then(() => jobController.postJob(
-      jobFlow, jobArea, jobCategory, jobSkills, 4 /* default pay size */, "Job details", {from: _client}
+      jobFlow, jobArea, jobCategory, jobSkills, 4 /* default pay size */, getRandomBytes32(), {from: _client}
     ))
     .then(tx => jobId = tx.logs[0].args.jobId)
     .then(() => jobController.postJobOffer(

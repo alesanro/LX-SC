@@ -34,6 +34,7 @@ contract JobWorkInitiationControllerLib is Roles2LibraryAdapter, JobControllerAb
     singleOddFlag(_area)
     singleOddFlag(_category)
     hasFlags(_skills)
+    onlyNotRegisteredJobDetailsIPFSHash(_detailsIPFSHash)
     public
     returns (uint)
     {
@@ -77,6 +78,7 @@ contract JobWorkInitiationControllerLib is Roles2LibraryAdapter, JobControllerAb
         store.set(jobSkills, jobId, _skills);
         store.set(jobDefaultPay, jobId, _defaultPay);
         store.set(jobDetailsIPFSHash, jobId, _detailsIPFSHash);
+        store.set(detailsIPFSHashToJobStorage, _detailsIPFSHash, jobId);
         store.add(clientJobs, bytes32(msg.sender), jobId);
         _emitter().emitJobPosted(jobId, _flowType, msg.sender, _area, _category, _skills, _defaultPay, _detailsIPFSHash, true);
         return OK;
@@ -97,6 +99,28 @@ contract JobWorkInitiationControllerLib is Roles2LibraryAdapter, JobControllerAb
     singleOddFlag(_area)
     singleOddFlag(_category)
     hasFlags(_skills)
+    onlyNotRegisteredJobDetailsIPFSHash(_detailsIPFSHash)
+    returns (uint)
+    {
+        return _postJob(
+            _flowType,
+            _area,
+            _category,
+            _skills,
+            _defaultPay,
+            _detailsIPFSHash
+        );
+    }
+
+    function _postJob(
+        uint _flowType,
+        uint _area,
+        uint _category,
+        uint _skills,
+        uint _defaultPay,
+        bytes32 _detailsIPFSHash
+    )
+    internal
     returns (uint)
     {
         uint jobId = store.get(jobsCount) + 1;
@@ -111,6 +135,7 @@ contract JobWorkInitiationControllerLib is Roles2LibraryAdapter, JobControllerAb
         store.set(jobSkills, jobId, _skills);
         store.set(jobDefaultPay, jobId, _defaultPay);
         store.set(jobDetailsIPFSHash, jobId, _detailsIPFSHash);
+        store.set(detailsIPFSHashToJobStorage, _detailsIPFSHash, jobId);
         store.add(clientJobs, bytes32(msg.sender), jobId);
 
         _emitter().emitJobPosted(jobId, _flowType, msg.sender, _area, _category, _skills, _defaultPay, _detailsIPFSHash, false);

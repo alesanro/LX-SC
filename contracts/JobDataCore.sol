@@ -53,6 +53,7 @@ contract JobDataCore is StorageAdapter, BitOps {
     StorageInterface.UIntAddressMapping jobClient;  // jobId => jobClient
     StorageInterface.UIntAddressMapping jobWorker;  // jobId => jobWorker
     StorageInterface.UIntBytes32Mapping jobDetailsIPFSHash;
+    StorageInterface.Bytes32UIntMapping detailsIPFSHashToJobStorage; // details ipfsHash => jobId
 
     StorageInterface.UIntUIntMapping jobSkillsArea;  // jobId => jobSkillsArea
     StorageInterface.UIntUIntMapping jobSkillsCategory;  // jobId => jobSkillsCategory
@@ -115,6 +116,7 @@ contract JobDataCore is StorageAdapter, BitOps {
         jobClient.init("jobClient");
         jobWorker.init("jobWorker");
         jobDetailsIPFSHash.init("jobDetailsIPFSHash");
+        detailsIPFSHashToJobStorage.init("detailsIPFSHashToJob");
 
         jobSkillsArea.init("jobSkillsArea");
         jobSkillsCategory.init("jobSkillsCategory");

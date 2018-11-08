@@ -52,6 +52,13 @@ contract JobsDataProvider is JobDataCore {
         }
     }
 
+    /// @notice Gets associated job with provided IPFS hash `_ipfsHash`
+    /// @param _ipfsHash ipfs hash of details file
+    /// @return job id of a job with such details IPFS hash
+    function getJobIdByDetailsIPFSHash(bytes32 _ipfsHash) public view returns (uint) {
+        return store.get(detailsIPFSHashToJobStorage, _ipfsHash);
+    }
+
     function getJobForClientCount(address _client) public view returns (uint) {
         return store.count(clientJobs, bytes32(_client));
     }

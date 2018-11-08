@@ -19,6 +19,7 @@ const eventsHelper = require('./helpers/eventsHelper');
 
 const helpers = require('./helpers/helpers');
 const ErrorsNamespace = require('../common/errors')
+const { getRandomBytes32 } = helpers;
 
 
 contract('JobController', function(accounts) {
@@ -63,9 +64,7 @@ contract('JobController', function(accounts) {
   const jobCategory = 4;
   const jobSkills = 4;
   const jobDefaultPay = 90;
-  const jobDetails = 'Job details';
 
-  const jobDetailsIPFSHash = "0x0011001100ff"
   const allSkills = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
   const allSkillsCategories = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
   const allSkillsAreas = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
@@ -160,7 +159,7 @@ contract('JobController', function(accounts) {
     const jobArea = 4;
     const jobCategory = 4;
     const jobSkills = 4;
-    const jobDetails = 'Job details';
+    const jobDetails = getRandomBytes32();
     const additionalTime = 60;
 
     const workerRate = '0x12f2a36ecd555';
@@ -311,7 +310,7 @@ contract('JobController', function(accounts) {
 
     const createPendingFinishJob = async () => {
       await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
-      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       await jobController.postJobOffer(jobId, 1000, 180, 1000, {from: worker});
       const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
       await jobController.acceptOffer(jobId, worker, { from: client, value: payment });
@@ -362,7 +361,7 @@ contract('JobController', function(accounts) {
 
     it('should pause current working job on start work at another job and on resume work at another job', async () => {
       await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
-      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       await jobController.postJobOffer(_jobId1, 1000, 180, 1000, {from: worker});
       const payment1 = await jobsDataProvider.calculateLockAmountFor.call(worker, _jobId1);
       await jobController.acceptOffer(_jobId1, worker, { from: client, value: payment1 });
@@ -370,7 +369,7 @@ contract('JobController', function(accounts) {
       await jobController.confirmStartWork(_jobId1, {from: client});
 
       await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
-      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       await jobController.postJobOffer(_jobId2, 1000, 180, 1000, {from: worker});
       const payment2 = await jobsDataProvider.calculateLockAmountFor.call(worker, _jobId2);
       await jobController.acceptOffer(_jobId2, worker, { from: client, value: payment2 });
@@ -391,7 +390,7 @@ contract('JobController', function(accounts) {
 
     const createWorkAcceptedJob = async () => {
       await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
-      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       await jobController.postJobOffer(jobId, 1000, 180, 1000, {from: worker});
       const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
       await jobController.acceptOffer(jobId, worker, { from: client, value: payment });
@@ -422,7 +421,7 @@ contract('JobController', function(accounts) {
 
     const createPendingFinishJob = async () => {
       await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
-      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       await jobController.postJobOffer(jobId, 1000, 180, 1000, {from: worker});
       const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
       await jobController.acceptOffer(jobId, worker, { from: client, value: payment });
@@ -477,7 +476,7 @@ contract('JobController', function(accounts) {
 
     const createRejectedJob = async () => {
       await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
-      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       await jobController.postJobOffer(jobId, 1000, 180, 1000, {from: worker});
       const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
       await jobController.acceptOffer(jobId, worker, { from: client, value: payment });
@@ -499,7 +498,7 @@ contract('JobController', function(accounts) {
 
     it('should return JOB_CONTROLLER_INVALID_STATE error code if job not in WORK_REJECTED state', async () => {
       await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
-      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       const result = await jobController.delegate.call(jobId, { from: client })
       asserts.equal(result.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE);
     });
@@ -528,7 +527,7 @@ contract('JobController', function(accounts) {
 
     const createDelegatedJob = async () => {
       await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
-      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       await jobController.postJobOffer(jobId, 1000, 180, 1000, {from: worker});
       const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
       await jobController.acceptOffer(jobId, worker, { from: client, value: payment });
@@ -581,7 +580,7 @@ contract('JobController', function(accounts) {
 
     const createRejectedJob = async () => {
       await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
-      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       await jobController.postJobOffer(jobId, 1000, 180, 1000, {from: worker});
       const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
       await jobController.acceptOffer(jobId, worker, { from: client, value: payment });
@@ -603,7 +602,7 @@ contract('JobController', function(accounts) {
 
     it('should return JOB_CONTROLLER_INVALID_STATE error code if job not in WORK_REJECTED state', async () => {
       await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
-      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       const result = await jobController.sendForRedoByClient.call(jobId, { from: client })
       asserts.equal(result.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE)
     });
@@ -632,7 +631,7 @@ contract('JobController', function(accounts) {
 
     const createDelegatedJob = async () => {
       await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
-      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       await jobController.postJobOffer(jobId, 1000, 180, 1000, {from: worker});
       const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId);
       await jobController.acceptOffer(jobId, worker, { from: client, value: payment });
@@ -655,7 +654,7 @@ contract('JobController', function(accounts) {
 
     it('should return JOB_CONTROLLER_INVALID_STATE error code if job not in DELEGATED state', async () => {
       await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
-      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       const result = await jobController.sendForRedoByBoardOwner.call(jobId, { from: moderator });
       asserts.equal(result.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_STATE);
     });
@@ -683,20 +682,20 @@ contract('JobController', function(accounts) {
   describe('#postJobInBoard', () => {
 
     it('should return JOB_CONTROLLER_INVALID_BOARD error code if board is not exists', async () => {
-      const result = await jobController.postJobInBoard.call(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      const result = await jobController.postJobInBoard.call(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       asserts.equal(result.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_BOARD);
     });
 
     it('should return BOARD_CONTROLLER_BOARD_IS_CLOSED error code if board is not active', async () => {
       await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
       await boardController.closeBoard(boardId, {from: moderator});
-      const result = await jobController.postJobInBoard.call(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      const result = await jobController.postJobInBoard.call(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       asserts.equal(result.toNumber(), ErrorsNamespace.BOARD_CONTROLLER_BOARD_IS_CLOSED);
     });
 
     it('should create job and bind job with board', async () => {
       await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
-      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       const jobsCount = await jobsDataProvider.getJobsCount();
       const jobStatus = await boardController.getJobStatus(boardId, jobId);
       asserts.equal(jobsCount.toNumber(), 1);
@@ -705,14 +704,14 @@ contract('JobController', function(accounts) {
 
     it('should emit JobPosted event if job has been posted', async () => {
       await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
-      const result = await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      const result = await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       const jobPostedEvents = await eventsHelper.findEvent([ jobController ], result, 'JobPosted');
       asserts.equal(jobPostedEvents.length, 1);
     });
 
     it('should emit JobBinded event if job has been posted', async () => {
       await boardController.createBoard(boardTags, boardTagsArea, boardTagsCategory, "boardIpfsHash", {from: moderator});
-      const result = await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, jobDetails, boardId, {from: client});
+      const result = await jobController.postJobInBoard(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPay, getRandomBytes32(), boardId, {from: client});
       const jobBindedEvents = await eventsHelper.findEvent([ boardController ], result, 'JobBinded');
       asserts.equal(jobBindedEvents.length, 1);
     });
@@ -864,16 +863,25 @@ contract('JobController', function(accounts) {
       const area = 1;
       const category = 4;
       const skills = 2;
-      const args = [jobFlow, area, category, skills, jobDefaultPaySize, "Job details"];
+      const args = [jobFlow, area, category, skills, jobDefaultPaySize];
 
       for (const c of clients) {
-        const tx = await jobController.postJob(...args, {from: c})
+        const ipfsHash = getRandomBytes32();
+        const modifiedArgs = [...args, ipfsHash, ]
+        const tx = await jobController.postJob(...modifiedArgs, {from: c})
         helpers.assertLogs(tx, [{
           event: "JobPosted",
           args: {
             client: c
           }
         }])
+
+        const expectedJobId = await jobsDataProvider.getJobsCount.call()
+        assert.equal(
+          (await jobsDataProvider.getJobIdByDetailsIPFSHash.call(ipfsHash)).toString(16), 
+          expectedJobId.toString(16), 
+          "Job id should be equal when getting it by details IPFS hash"
+        )
       }
       assert.equal((await jobsDataProvider.getJobsCount.call()).toNumber(), 3)
     });
@@ -967,14 +975,13 @@ contract('JobController', function(accounts) {
       const jobArea = 4;
       const jobCategory = 4;
       const jobSkills = 4;
-      const jobDetails = 'Job details';
       const additionalTime = 60;
       const workerRate = '0x12f2a36ecd555';
       const workerOnTop = '0x12f2a36ecd555';
       const jobEstimate = 180;
 
       return Promise.resolve()
-        .then(() => jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}))
+        .then(() => jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, getRandomBytes32(), {from: client}))
         .then(() => jobController.postJobOffer.call(jobId, workerRate, jobEstimate, workerOnTop, {from: client}))
         .then((code) => assert.equal(code.toNumber(), ErrorsNamespace.JOB_CONTROLLER_INVALID_ROLE))
     });
@@ -1006,14 +1013,13 @@ contract('JobController', function(accounts) {
       const jobArea = 4;
       const jobCategory = 4;
       const jobSkills = 4;
-      const jobDetails = 'Job details';
       const workerRate = 55;
       const workerOnTop = 55;
       const jobEstimate = 180;
       const args = [jobId, workerRate, jobEstimate, workerOnTop];
       return Promise.resolve()
         .then(() => jobController.postJob(
-          jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}
+          jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, getRandomBytes32(), {from: client}
         ))
         .then(async () => {
           for (const w of workers) {
@@ -1162,14 +1168,13 @@ contract('JobController', function(accounts) {
       const jobArea = 4;
       const jobCategory = 4;
       const jobSkills = 4;
-      const jobDetails = 'Job details';
       const additionalTime = 60;
       const workerRate = '0x12f2a36ecd555';
       const workerOnTop = '0x12f2a36ecd555';
       const jobEstimate = 180;
 
       return Promise.resolve()
-        .then(() => jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}))
+        .then(() => jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, getRandomBytes32(), {from: client}))
         .then(() => jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, {from: worker}))
         .then(async () => {
           const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
@@ -1346,14 +1351,13 @@ contract('JobController', function(accounts) {
       const jobArea = 4;
       const jobCategory = 4;
       const jobSkills = 4;
-      const jobDetails = 'Job details';
 
       const workerRate = '0x12f2a36ecd555';
       const workerOnTop = '0x12f2a36ecd555';
       const jobEstimate = 180;
 
       return Promise.resolve()
-        .then(() => jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, jobDetails, {from: client}))
+        .then(() => jobController.postJob(jobFlow, jobArea, jobCategory, jobSkills, jobDefaultPaySize, getRandomBytes32(), {from: client}))
         .then(() => jobController.postJobOffer(jobId, workerRate, jobEstimate, workerOnTop, {from: worker}))
         .then(async () => {
           const payment = await jobsDataProvider.calculateLockAmountFor.call(worker, jobId)
@@ -1425,7 +1429,7 @@ contract('JobController', function(accounts) {
       const skillsArea = '4';
       const skillsCategory = '4';
       const skills = '555';
-      const jobDetailsIpfsHash = "Job details";
+      const jobDetailsIpfsHash = getRandomBytes32();
 
       const workerRate = '0x12f2a36ecd555';
       const workerOnTop = '0x12f2a36ecd555';
@@ -1448,7 +1452,7 @@ contract('JobController', function(accounts) {
           assert.equal(log.skillsArea.toString(), skillsArea);
           assert.equal(log.skillsCategory.toString(), skillsCategory);
           assert.equal(log.skills.toString(), skills);
-          assert.equal(log.detailsIPFSHash, await mock.convertToBytes32.call(jobDetailsIpfsHash));
+          assert.equal(log.detailsIPFSHash, jobDetailsIpfsHash);
         })
         // Post job offer
         .then(() => jobController.postJobOffer(
@@ -1616,7 +1620,7 @@ contract('JobController', function(accounts) {
       const skillsArea = '4';
       const skillsCategory = '4';
       const skills = '555';
-      const jobDetails = "Job details";
+      const jobDetails = getRandomBytes32();
 
       const workerRate = '0x12f2a36ecd555';
       const workerOnTop = '0x12f2a36ecd555';
@@ -1639,7 +1643,7 @@ contract('JobController', function(accounts) {
           assert.equal(log.skillsArea.toString(), skillsArea);
           assert.equal(log.skillsCategory.toString(), skillsCategory);
           assert.equal(log.skills.toString(), skills);
-          // TODO: handle hash matches
+          assert.equal(log.detailsIPFSHash, jobDetails);
         })
         // Post job offer
         .then(() => jobController.postJobOffer(
@@ -2181,7 +2185,6 @@ contract('JobController', function(accounts) {
   });
 
   describe('Jobs Data Provider', () => {
-    const jobDetailsIPFSHash = "0x0011001100ff"
     const allSkills = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
     const allSkillsCategories = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
     const allSkillsAreas = web3.toBigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
@@ -2193,9 +2196,9 @@ contract('JobController', function(accounts) {
     const workerOffer = defaultWorkerOffer
 
     beforeEach(async () => {
-      await jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
-      await jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client, })
-      await jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client2, })
+      await jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client, })
+      await jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client, })
+      await jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client2, })
 
       await jobController.postJobOffer(1, workerOffer.workerRate, workerOffer.jobEstimate, workerOffer.workerOnTop, { from: worker, })
       await jobController.postJobOffer(3, workerOffer.workerRate, workerOffer.jobEstimate, workerOffer.workerOnTop, { from: worker, })
@@ -2312,7 +2315,7 @@ contract('JobController', function(accounts) {
 
     it("should have update values after job's state changed", async () => {
       await jobController.cancelJob(3, { from: client2, })
-      await jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client2, })
+      await jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client2, })
 
       assert.equal((await jobsDataProvider.getJobsCount.call()).toNumber(), 4)
 
@@ -2419,7 +2422,7 @@ contract('JobController', function(accounts) {
 
     it("check values from filters after changes", async () => {
       await jobController.cancelJob(3, { from: client2, })
-      await jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, jobDetailsIPFSHash, { from: client2, })
+      await jobController.postJob(jobFlow, 4, 4, 4, jobDefaultPaySize, getRandomBytes32(), { from: client2, })
 
       {
         const jobs = (await jobsDataProvider.getJobs.call(
