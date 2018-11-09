@@ -1,6 +1,6 @@
 {
   "name": "@laborx/sc",
-  "version": "0.0.12-beta.3",
+  "version": "0.0.12-beta.4",
   "description": "ChronoBank Labor-X Smart Contracts",
   "scripts": {
     "test": "npx truffle test",
