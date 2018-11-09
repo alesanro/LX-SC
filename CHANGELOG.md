@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="0.0.12-beta.4"></a>
+## [0.0.12-beta.4](https://github.com/ChronoBank/LX-SC/compare/v0.0.12-beta.3...v0.0.12-beta.4) (2018-11-09)
+
+
+### Bug Fixes
+
+* **jobs:** LABX-862 allows to get jobId by details IPFS hash ([d9a1fe7](https://github.com/ChronoBank/LX-SC/commit/d9a1fe7))
+* **jobs:** LABX-947 add `JobsDataProvider#getWorkerOffersCount(address)`  and `JobsDataProvider#getWorkerOffers(address, uint, uint)` for worker's job offers ([ef5a9b3](https://github.com/ChronoBank/LX-SC/commit/ef5a9b3))
+
+
+
 <a name="0.0.12-beta.3"></a>
 ## [0.0.12-beta.3](https://github.com/ChronoBank/LX-SC/compare/v0.0.12-beta.2...v0.0.12-beta.3) (2018-11-02)
 
